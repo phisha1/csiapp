@@ -19,17 +19,18 @@
 }
 
 [data-theme='dark'] {
-  --csi-bg: #0c1219;
-  --csi-surface: #141d28;
-  --csi-surface-2: #1c2733;
-  --csi-border: #2a3846;
-  --csi-text: #eef2f7;
-  --csi-text-2: #a7b4c4;
-  --csi-muted: #7a8798;
-  --csi-scroll: #36444f;
-  /* En sombre, le navy se fond dans le fond : on passe à un bleu lisible */
-  --csi-primary: #3f74c0;
-  --csi-primary-hover: #5285cf;
+  /* Ardoise douce : gris-ardoise neutre, peu bleuté, contraste reposant */
+  --csi-bg: #16181d;
+  --csi-surface: #1e2128;
+  --csi-surface-2: #262a31;
+  --csi-border: #2c313b;
+  --csi-text: #e6e9ee;
+  --csi-text-2: #a6aeba;
+  --csi-muted: #79828f;
+  --csi-scroll: #353b45;
+  /* Accent bleu doux, lisible sur l'ardoise */
+  --csi-primary: #4f8ad6;
+  --csi-primary-hover: #5f97df;
   --csi-primary-on: #ffffff;
 }
 
@@ -43,12 +44,11 @@
   color: var(--csi-muted);
 }
 [data-theme='dark'] select option {
-  background: #141d28;
-  color: #eef2f7;
+  background: #1e2128;
+  color: #e6e9ee;
 }
-/* Le panneau navy fixe (auth, modales) garde un texte clair en sombre */
 [data-theme='dark'] ::selection {
-  background: rgba(63, 116, 192, 0.4);
+  background: rgba(79, 138, 214, 0.35);
 }
 
 * {
