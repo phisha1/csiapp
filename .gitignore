@@ -1,0 +1,26 @@
+# Dépendances
+node_modules/
+
+# Build
+dist/
+dist-ssr/
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Éditeurs / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Outils locaux (preview, config Claude Code)
+.claude/
+
+# Cache Vite
+.vite/
