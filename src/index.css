@@ -1,0 +1,147 @@
+/* ============================================================
+   CSI — CNAM · Styles globaux (fidèles au prototype Systeme-CSI v2)
+   Thème clair / sombre via variables CSS + [data-theme]
+   ============================================================ */
+
+:root {
+  --csi-bg: #eceff3;
+  --csi-surface: #ffffff;
+  --csi-surface-2: #f7f9fc;
+  --csi-border: #e6eaf0;
+  --csi-text: #14253f;
+  --csi-text-2: #69748a;
+  --csi-muted: #94a0b2;
+  --csi-scroll: #c3cad6;
+  /* Couleur d'action principale (boutons, sélections, accents) */
+  --csi-primary: #14253f;
+  --csi-primary-hover: #1d3357;
+  --csi-primary-on: #ffffff;
+}
+
+[data-theme='dark'] {
+  --csi-bg: #0c1219;
+  --csi-surface: #141d28;
+  --csi-surface-2: #1c2733;
+  --csi-border: #2a3846;
+  --csi-text: #eef2f7;
+  --csi-text-2: #a7b4c4;
+  --csi-muted: #7a8798;
+  --csi-scroll: #36444f;
+  /* En sombre, le navy se fond dans le fond : on passe à un bleu lisible */
+  --csi-primary: #3f74c0;
+  --csi-primary-hover: #5285cf;
+  --csi-primary-on: #ffffff;
+}
+
+[data-theme='dark'] input,
+[data-theme='dark'] textarea,
+[data-theme='dark'] select {
+  color: var(--csi-text);
+}
+[data-theme='dark'] input::placeholder,
+[data-theme='dark'] textarea::placeholder {
+  color: var(--csi-muted);
+}
+[data-theme='dark'] select option {
+  background: #141d28;
+  color: #eef2f7;
+}
+/* Le panneau navy fixe (auth, modales) garde un texte clair en sombre */
+[data-theme='dark'] ::selection {
+  background: rgba(63, 116, 192, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  color: var(--csi-text);
+  background: var(--csi-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--csi-scroll);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===================== Animations (keyframes) ===================== */
+@keyframes csiFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes csiPanel {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes csiPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes csiPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(224, 123, 31, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(224, 123, 31, 0);
+  }
+}
+@keyframes csiBar {
+  from {
+    width: 0;
+  }
+}
+@keyframes csiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes csiFlow {
+  0% {
+    left: -30%;
+  }
+  100% {
+    left: 100%;
+  }
+}
