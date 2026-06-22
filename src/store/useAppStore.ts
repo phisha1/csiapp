@@ -131,6 +131,8 @@ interface AppState {
   traceKey: ScreenKey | null;
   toast: string | null;
   theme: Theme;
+  /** Tiroir de navigation ouvert (mobile uniquement). */
+  navOpen: boolean;
 
   // ----- listes -----
   listQ: ListQuery;
@@ -175,6 +177,8 @@ interface AppState {
   toggleUml: () => void;
   showToast: (t: string) => void;
   setTheme: (t: Theme) => void;
+  toggleNav: () => void;
+  closeNav: () => void;
 
   // auth
   openLogin: () => void;
@@ -275,6 +279,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   traceKey: null,
   toast: null,
   theme: loadTheme(),
+  navOpen: false,
 
   listQ: { assures: '', medecins: '', feuilles: '' },
   acOpen: null,
@@ -311,9 +316,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   umlTab: 'contexte',
   stateMachineSel: 'Créée',
 
-  go: (screen, traceKey = null) => set({ screen, traceKey, ...FORM_RESET }),
-  openWith: (screen, traceKey = null) => set({ screen, traceKey, umlOpen: false, ...FORM_RESET }),
+  go: (screen, traceKey = null) => set({ screen, traceKey, navOpen: false, ...FORM_RESET }),
+  openWith: (screen, traceKey = null) => set({ screen, traceKey, umlOpen: false, navOpen: false, ...FORM_RESET }),
   toggleUml: () => set((s) => ({ umlOpen: !s.umlOpen, traceKey: null })),
+  toggleNav: () => set((s) => ({ navOpen: !s.navOpen })),
+  closeNav: () => set({ navOpen: false }),
   showToast: (t) => {
     set({ toast: t });
     if (toastTimer) clearTimeout(toastTimer);
@@ -375,7 +382,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ inscrDone: true, inscrCodeError: '' });
   },
   goLoginAfter: () => set({ authView: 'login', inscrDone: false, inscrCode: '', inscrCodeError: '' }),
-  logout: () => set({ authed: false, authStage: 'landing', authView: 'login', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false }),
+  logout: () => set({ authed: false, authStage: 'landing', authView: 'login', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false }),
 
   // ---- listes ----
   setListQ: (field, val) => set((s) => ({ listQ: { ...s.listQ, [field]: val }, acOpen: field })),
