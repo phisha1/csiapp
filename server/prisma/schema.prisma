@@ -1,0 +1,296 @@
+// Schéma de données CSI-CNAM — PostgreSQL via Prisma.
+// Dérivé du diagramme de classe métier du rapport de conception (§1.1.3)
+// et du cahier des besoins (BF1–BF12, BNF1–BNF7).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------- Énumérations -----------------------------
+
+enum Role {
+  ASSUREUR
+  GENERALISTE
+  SPECIALISTE
+}
+
+enum StatutCompte {
+  ACTIF
+  BLOQUE
+}
+
+enum Sexe {
+  M
+  F
+}
+
+enum TypeMedecin {
+  GENERALISTE
+  SPECIALISTE
+}
+
+enum ModeRemboursement {
+  ESPECES
+  VIREMENT
+}
+
+// Cycle de vie de la feuille de maladie (rapport §1.2.4)
+enum EtatFeuille {
+  BROUILLON
+  TRANSMISE
+  EN_COURS
+  INCOMPLETE
+  VALIDEE
+  REMBOURSEE
+  REFUSEE
+  SUPPRIMEE
+}
+
+enum TypePrescription {
+  MEDICAMENT
+  ORIENTATION
+}
+
+enum StatutRemboursement {
+  EN_ATTENTE
+  EN_COURS
+  EFFECTUE
+  ECHOUE
+}
+
+enum NiveauUrgence {
+  NORMAL
+  URGENT
+  TRES_URGENT
+}
+
+// ------------------------------- Modèles ---------------------------------
+
+model Utilisateur {
+  id                String         @id @default(uuid())
+  login             String         @unique
+  motDePasseHash    String
+  role              Role
+  statut            StatutCompte   @default(ACTIF)
+  nbEchecs          Int            @default(0) // BNF1 : verrouillage après MAX_LOGIN_ATTEMPTS
+  derniereConnexion DateTime?
+  medecin           Medecin?
+  audits            JournalAudit[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+// Super-type partagé : permet la dualité assuré/médecin (BF3).
+model Personne {
+  id            String    @id @default(uuid())
+  nom           String
+  prenom        String
+  sexe          Sexe
+  dateNaissance DateTime
+  telephone     String?
+  email         String?
+  assure        Assure?
+  medecin       Medecin?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Assure {
+  id             String                @id @default(uuid())
+  personne       Personne              @relation(fields: [personneId], references: [id])
+  personneId     String                @unique
+  matricule      String                @unique // ex : ASS-2024-0142
+  numeroSecu     String?               @unique
+  profession     String?
+  employeur      String?
+  groupe         String?
+  statut         String                @default("Actif")
+  modeRembPref   ModeRemboursement     @default(ESPECES)
+  traitant       Medecin?              @relation("MedecinTraitant", fields: [traitantId], references: [id])
+  traitantId     String?
+  coordBancaire  CoordBancaire?
+  traitantHist   MedecinTraitantHist[]
+  consultations  Consultation[]
+  feuilles       FeuilleMaladie[]
+  prescriptions  Prescription[]
+  remboursements Remboursement[]
+  factures       Facture[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+}
+
+model Medecin {
+  id                 String                @id @default(uuid())
+  personne           Personne              @relation(fields: [personneId], references: [id])
+  personneId         String                @unique
+  numOrdre           String                @unique // ex : CM-MED-001
+  type               TypeMedecin
+  specialite         Specialite?           @relation(fields: [specialiteId], references: [id])
+  specialiteId       String? // requis si type = SPECIALISTE (contrôlé côté service, BNF3)
+  etablissement      String?
+  utilisateur        Utilisateur?          @relation(fields: [utilisateurId], references: [id])
+  utilisateurId      String?               @unique
+  patientsTraites    Assure[]              @relation("MedecinTraitant")
+  traitantHist       MedecinTraitantHist[]
+  consultations      Consultation[]
+  feuilles           FeuilleMaladie[]
+  prescriptions      Prescription[]        @relation("MedecinPrescripteur")
+  orientationsRecues Prescription[]        @relation("MedecinSpecialiste")
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+}
+
+model Specialite {
+  id            String         @id @default(uuid())
+  libelle       String         @unique
+  medecins      Medecin[]
+  prescriptions Prescription[]
+}
+
+// Historisation des médecins traitants (BF4).
+model MedecinTraitantHist {
+  id        String    @id @default(uuid())
+  assure    Assure    @relation(fields: [assureId], references: [id])
+  assureId  String
+  medecin   Medecin   @relation(fields: [medecinId], references: [id])
+  medecinId String
+  dateDebut DateTime  @default(now())
+  dateFin   DateTime?
+}
+
+// Données bancaires sensibles → numeroCompte chiffré applicativement (BNF1).
+model CoordBancaire {
+  id           String @id @default(uuid())
+  assure       Assure @relation(fields: [assureId], references: [id])
+  assureId     String @unique
+  banque       String
+  numeroCompte String
+  titulaire    String
+}
+
+model Consultation {
+  id         String          @id @default(uuid())
+  assure     Assure          @relation(fields: [assureId], references: [id])
+  assureId   String
+  medecin    Medecin         @relation(fields: [medecinId], references: [id])
+  medecinId  String
+  date       DateTime
+  motif      String?
+  type       TypeMedecin
+  diagnostic String?
+  actes      String?
+  suite      String?
+  feuille    FeuilleMaladie?
+  createdAt  DateTime        @default(now())
+}
+
+model FeuilleMaladie {
+  id             String         @id @default(uuid())
+  code           String         @unique // ex : FM-2024-0890
+  assure         Assure         @relation(fields: [assureId], references: [id])
+  assureId       String
+  medecin        Medecin        @relation(fields: [medecinId], references: [id])
+  medecinId      String
+  consultation   Consultation?  @relation(fields: [consultationId], references: [id])
+  consultationId String?        @unique
+  date           DateTime
+  diagnostic     String?
+  montant        Decimal        @db.Decimal(12, 2)
+  etat           EtatFeuille    @default(BROUILLON)
+  taux           Int? // 100 (généraliste) ou 80 (spécialiste), fixé à la validation
+  prescriptions  Prescription[]
+  remboursement  Remboursement?
+  facture        Facture?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Prescription {
+  id                   String            @id @default(uuid())
+  feuille              FeuilleMaladie    @relation(fields: [feuilleId], references: [id])
+  feuilleId            String
+  assure               Assure            @relation(fields: [assureId], references: [id])
+  assureId             String
+  medecin              Medecin           @relation("MedecinPrescripteur", fields: [medecinId], references: [id])
+  medecinId            String
+  date                 DateTime          @default(now())
+  type                 TypePrescription
+  // Pour une orientation (BF9) :
+  specialite           Specialite?       @relation(fields: [specialiteId], references: [id])
+  specialiteId         String?
+  medecinSpecialiste   Medecin?          @relation("MedecinSpecialiste", fields: [medecinSpecialisteId], references: [id])
+  medecinSpecialisteId String?
+  niveauUrgence        NiveauUrgence?
+  // Pour une prescription de médicaments (BF8) :
+  lignes               OrdonnanceLigne[]
+  createdAt            DateTime          @default(now())
+}
+
+// Catalogue de médicaments (BF8 : sélection « depuis un catalogue »).
+model MedicamentCatalogue {
+  id     String            @id @default(uuid())
+  code   String            @unique
+  nom    String
+  forme  String?
+  lignes OrdonnanceLigne[]
+}
+
+model OrdonnanceLigne {
+  id             String              @id @default(uuid())
+  prescription   Prescription        @relation(fields: [prescriptionId], references: [id])
+  prescriptionId String
+  medicament     MedicamentCatalogue @relation(fields: [medicamentId], references: [id])
+  medicamentId   String
+  posologie      String?
+  duree          String?
+  instructions   String?
+}
+
+model Remboursement {
+  id                String              @id @default(uuid())
+  reference         String              @unique // ex : RB-2024-0456
+  feuille           FeuilleMaladie      @relation(fields: [feuilleId], references: [id])
+  feuilleId         String              @unique
+  assure            Assure              @relation(fields: [assureId], references: [id])
+  assureId          String
+  montant           Decimal             @db.Decimal(12, 2)
+  taux              Int
+  mode              ModeRemboursement
+  statut            StatutRemboursement @default(EN_ATTENTE)
+  referenceBancaire String? // renseigné si virement (BF11)
+  facture           Facture?
+  date              DateTime?
+  createdAt         DateTime            @default(now())
+}
+
+model Facture {
+  id              String         @id @default(uuid())
+  reference       String         @unique // ex : FACT-2024-0302
+  remboursement   Remboursement? @relation(fields: [remboursementId], references: [id])
+  remboursementId String?        @unique
+  assure          Assure         @relation(fields: [assureId], references: [id])
+  assureId        String
+  feuille         FeuilleMaladie @relation(fields: [feuilleId], references: [id])
+  feuilleId       String         @unique
+  montant         Decimal        @db.Decimal(12, 2)
+  date            DateTime       @default(now())
+  statut          String         @default("Émise")
+  cheminPdf       String? // PDF généré pour impression (BF12)
+}
+
+// Journal d'audit des actions critiques (BNF1 traçabilité, BNF7 rapports d'audit).
+model JournalAudit {
+  id            String       @id @default(uuid())
+  utilisateur   Utilisateur? @relation(fields: [utilisateurId], references: [id])
+  utilisateurId String?
+  action        String // ex : "REMBOURSEMENT_EFFECTUE"
+  entite        String? // ex : "FeuilleMaladie"
+  entiteId      String?
+  details       Json?
+  horodatage    DateTime     @default(now())
+}
