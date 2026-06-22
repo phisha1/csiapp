@@ -90,8 +90,8 @@ model Personne {
   id            String    @id @default(uuid())
   nom           String
   prenom        String
-  sexe          Sexe
-  dateNaissance DateTime
+  sexe          Sexe? // optionnel : non requis pour un médecin (renseigné pour un assuré)
+  dateNaissance DateTime?
   telephone     String?
   email         String?
   assure        Assure?
