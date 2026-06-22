@@ -1,11 +1,34 @@
 import { Box } from '../../components/ui/Box';
 import { Icon } from '../../components/ui/Icon';
 import { css } from '../../lib/css';
-import { medecins } from '../../data/sampleData';
+import { useFetch } from '../../lib/useApi';
+import type { Medecin } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 
 const TH = ['N° Ordre', 'Médecin', 'Type', 'Spécialité', 'Établissement', 'Patients'];
 const norm = (x: string) => x.toLowerCase();
+
+interface ApiMedecin {
+  id: string;
+  numOrdre: string;
+  type: 'GENERALISTE' | 'SPECIALISTE';
+  etablissement: string | null;
+  specialite: { libelle: string } | null;
+  personne: { nom: string; prenom: string; telephone: string | null };
+  _count?: { patientsTraites: number };
+}
+
+function mapMedecin(m: ApiMedecin): Medecin {
+  return {
+    id: m.numOrdre,
+    nom: `${m.personne.nom} ${m.personne.prenom}`,
+    spec: m.specialite?.libelle ?? '—',
+    type: m.type === 'SPECIALISTE' ? 'Spécialiste' : 'Généraliste',
+    etab: m.etablissement ?? '—',
+    tel: m.personne.telephone ?? '',
+    patients: m._count?.patientsTraites ?? 0,
+  };
+}
 
 const typeBadge = (type: string) =>
   type === 'Généraliste'
@@ -14,8 +37,11 @@ const typeBadge = (type: string) =>
 
 export function MedecinsList() {
   const { listQ, acOpen, setListQ, setAcOpen, openDetail, go } = useAppStore();
+  const { data, loading, error } = useFetch<{ items: ApiMedecin[] }>('/medecins?limit=100');
+  const all = (data?.items ?? []).map(mapMedecin);
+
   const q = listQ.medecins.trim();
-  const rows = q ? medecins.filter((m) => norm(`${m.nom} ${m.id} ${m.spec} ${m.etab}`).includes(norm(q))) : medecins;
+  const rows = q ? all.filter((m) => norm(`${m.nom} ${m.id} ${m.spec} ${m.etab}`).includes(norm(q))) : all;
   const open = acOpen === 'medecins' && q.length > 0;
   const sugg = rows.slice(0, 2);
 
@@ -59,6 +85,15 @@ export function MedecinsList() {
             </tr>
           </thead>
           <tbody>
+            {loading && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: 'var(--csi-muted)', fontSize: 13 }}>Chargement…</td></tr>
+            )}
+            {error && !loading && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: '#8b2231', fontSize: 13 }}>Erreur : {error}</td></tr>
+            )}
+            {!loading && !error && rows.length === 0 && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: 'var(--csi-muted)', fontSize: 13 }}>Aucun médecin.</td></tr>
+            )}
             {rows.map((m) => (
               <Box as="tr" key={m.id} onClick={() => openDetail({ type: 'medecin', data: m })} sx="border-top:1px solid var(--csi-border);font-size:13px;cursor:pointer;" hover="background:var(--csi-surface-2);">
                 <td style={{ padding: '13px 14px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--csi-text)' }}>{m.id}</td>
@@ -66,7 +101,7 @@ export function MedecinsList() {
                 <td style={{ padding: '13px 14px' }}><span style={css(typeBadge(m.type))}>{m.type}</span></td>
                 <td style={{ padding: '13px 14px', color: 'var(--csi-text-2)' }}>{m.spec}</td>
                 <td style={{ padding: '13px 14px', color: 'var(--csi-text-2)' }}>{m.etab}</td>
-                <td style={{ padding: '13px 14px', color: 'var(--csi-text)', fontWeight: 600 }}>{m.patients}</td>
+                <td style={{ padding: '13px 14px', color: 'var(--csi-text)', fontWeight: 600 }}>{m.patients > 0 ? m.patients : '—'}</td>
               </Box>
             ))}
           </tbody>

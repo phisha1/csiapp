@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { api, ApiError, getToken, setToken } from '../lib/api';
 import type {
   Assure,
   AuthStage,
@@ -196,6 +197,7 @@ interface AppState {
   doInscr: () => void;
   goLoginAfter: () => void;
   logout: () => void;
+  restoreSession: () => Promise<void>;
 
   // listes
   setListQ: (field: ListField, val: string) => void;
@@ -346,8 +348,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAuthView: (vw) => set(vw === 'login' ? { authView: 'login', inscrDone: false, loginError: '' } : { authView: 'inscription', inscrDone: false, inscrCode: '', inscrCodeError: '' }),
   setLoginId: (val) => set({ loginId: val, loginError: '' }),
   setLoginPw: (val) => set({ loginPw: val, loginError: '' }),
-  doLogin: () => {
-    const { loginId, loginPw, loginLocked, loginAttempts } = get();
+  // Authentification réelle contre l'API (JWT). Le rôle est déduit du compte.
+  doLogin: async () => {
+    const { loginId, loginPw, loginLocked } = get();
     if (loginLocked) {
       set({ loginError: LOCK_MSG });
       return;
@@ -356,20 +359,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ loginError: "Veuillez renseigner l'identifiant et le mot de passe." });
       return;
     }
-    // Le rôle est déduit du compte (jamais choisi par l'utilisateur) — conforme au rapport §1.2.2.1.
-    let role: Role | null = null;
-    if (loginId === 'assureur' && loginPw === 'cnam2024') role = 'assureur';
-    else if (loginId === 'medecin' && loginPw === 'cnam2024') role = 'medecin';
-    if (!role) {
-      const attempts = loginAttempts + 1;
-      if (attempts >= MAX_LOGIN_ATTEMPTS) {
-        set({ loginAttempts: attempts, loginLocked: true, loginError: LOCK_MSG });
+    try {
+      const res = await api.post<{ token: string; utilisateur: { role: string } }>('/auth/login', {
+        login: loginId,
+        motDePasse: loginPw,
+      });
+      setToken(res.token);
+      const role: Role = res.utilisateur.role === 'ASSUREUR' ? 'assureur' : 'medecin';
+      set({ authed: true, role, screen: 'dashboard', loginError: '', loginAttempts: 0, loginLocked: false, loginPw: '' });
+    } catch (e) {
+      if (e instanceof ApiError) {
+        set({ loginError: e.message, loginLocked: e.status === 423 });
       } else {
-        set({ loginAttempts: attempts, loginError: `Identifiants incorrects. Tentative ${attempts}/${MAX_LOGIN_ATTEMPTS} — le compte sera bloqué après ${MAX_LOGIN_ATTEMPTS} échecs.` });
+        set({ loginError: "Connexion au serveur impossible. Vérifiez que l'API est démarrée (port 4000)." });
       }
-      return;
     }
-    set({ authed: true, role, screen: 'dashboard', loginError: '', loginAttempts: 0, loginLocked: false });
   },
   setInscrCode: (val) => set({ inscrCode: val, inscrCodeError: '' }),
   doInscr: () => {
@@ -386,7 +390,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ inscrDone: true, inscrCodeError: '' });
   },
   goLoginAfter: () => set({ authView: 'login', inscrDone: false, inscrCode: '', inscrCodeError: '' }),
-  logout: () => set({ authed: false, authStage: 'landing', authView: 'login', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false }),
+  logout: () => {
+    setToken(null);
+    set({ authed: false, authStage: 'landing', authView: 'login', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
+  },
+  // Restaure la session au démarrage si un jeton valide existe.
+  restoreSession: async () => {
+    if (!getToken()) return;
+    try {
+      const res = await api.get<{ utilisateur: { role: string } }>('/auth/me');
+      const role: Role = res.utilisateur.role === 'ASSUREUR' ? 'assureur' : 'medecin';
+      set({ authed: true, role });
+    } catch {
+      setToken(null);
+    }
+  },
 
   // ---- listes ----
   setListQ: (field, val) => set((s) => ({ listQ: { ...s.listQ, [field]: val }, acOpen: field })),

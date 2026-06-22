@@ -2,17 +2,57 @@ import { Box } from '../../components/ui/Box';
 import { Icon } from '../../components/ui/Icon';
 import { Badge } from '../../components/ui/Badge';
 import { css } from '../../lib/css';
-import { feuilles } from '../../data/sampleData';
 import { fmt, badgeFor } from '../../lib/format';
+import { useFetch } from '../../lib/useApi';
+import type { Feuille } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 
 const TH = ['Code', 'Assuré', 'Médecin', 'Date', 'Diagnostic', 'Montant', 'État'];
 const norm = (x: string) => x.toLowerCase();
 
+const ETAT_LABEL: Record<string, string> = {
+  BROUILLON: 'Brouillon',
+  TRANSMISE: 'Transmise',
+  EN_COURS: 'En cours de traitement',
+  INCOMPLETE: 'Incomplète',
+  VALIDEE: 'Validée',
+  REMBOURSEE: 'Remboursée',
+  REFUSEE: 'Refusée',
+  SUPPRIMEE: 'Supprimée',
+};
+
+interface ApiFeuille {
+  id: string;
+  code: string;
+  date: string;
+  diagnostic: string | null;
+  montant: string;
+  etat: string;
+  taux: number | null;
+  assure: { personne: { nom: string; prenom: string } };
+  medecin: { personne: { nom: string; prenom: string } };
+}
+
+function mapFeuille(f: ApiFeuille): Feuille {
+  return {
+    code: f.code,
+    assure: `${f.assure.personne.nom} ${f.assure.personne.prenom}`,
+    medecin: `${f.medecin.personne.nom} ${f.medecin.personne.prenom}`,
+    date: f.date ? f.date.slice(0, 10) : '',
+    diag: f.diagnostic ?? '',
+    montant: Number(f.montant),
+    etat: ETAT_LABEL[f.etat] ?? f.etat,
+    taux: f.taux ?? undefined,
+  };
+}
+
 export function FeuillesList() {
   const { role, listQ, acOpen, setListQ, setAcOpen, openWith } = useAppStore();
+  const { data, loading, error } = useFetch<{ items: ApiFeuille[] }>('/feuilles?limit=100');
+  const all = (data?.items ?? []).map(mapFeuille);
+
   const q = listQ.feuilles.trim();
-  const rows = q ? feuilles.filter((f) => norm(`${f.code} ${f.assure} ${f.diag}`).includes(norm(q))) : feuilles;
+  const rows = q ? all.filter((f) => norm(`${f.code} ${f.assure} ${f.diag}`).includes(norm(q))) : all;
   const open = acOpen === 'feuilles' && q.length > 0;
   const sugg = rows.slice(0, 2);
 
@@ -68,6 +108,15 @@ export function FeuillesList() {
             </tr>
           </thead>
           <tbody>
+            {loading && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: 'var(--csi-muted)', fontSize: 13 }}>Chargement…</td></tr>
+            )}
+            {error && !loading && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: '#8b2231', fontSize: 13 }}>Erreur : {error}</td></tr>
+            )}
+            {!loading && !error && rows.length === 0 && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: 'var(--csi-muted)', fontSize: 13 }}>Aucune feuille.</td></tr>
+            )}
             {rows.map((f) => (
               <Box as="tr" key={f.code} sx="border-top:1px solid var(--csi-border);font-size:13px;" hover="background:var(--csi-surface-2);">
                 <td style={{ padding: '13px 14px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--csi-text)' }}>{f.code}</td>

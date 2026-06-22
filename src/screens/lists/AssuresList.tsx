@@ -1,16 +1,44 @@
 import { Box } from '../../components/ui/Box';
 import { Icon } from '../../components/ui/Icon';
 import { Badge } from '../../components/ui/Badge';
-import { assures } from '../../data/sampleData';
+import { useFetch } from '../../lib/useApi';
+import type { Assure } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 
 const TH = ['Identifiant', 'Assuré', 'Sexe', 'Profession', 'Groupe', 'Médecin traitant', 'Statut'];
 const norm = (x: string) => x.toLowerCase();
 
+interface ApiAssure {
+  id: string;
+  matricule: string;
+  profession: string | null;
+  groupe: string | null;
+  statut: string;
+  personne: { nom: string; prenom: string; sexe: 'M' | 'F'; dateNaissance: string };
+  traitant: { personne: { nom: string; prenom: string } } | null;
+}
+
+function mapAssure(a: ApiAssure): Assure {
+  return {
+    id: a.matricule,
+    nom: a.personne.nom,
+    prenom: a.personne.prenom,
+    sexe: a.personne.sexe,
+    naissance: a.personne.dateNaissance ? a.personne.dateNaissance.slice(0, 10) : '',
+    profession: a.profession ?? '',
+    groupe: a.groupe ?? '',
+    traitant: a.traitant ? `${a.traitant.personne.nom} ${a.traitant.personne.prenom}` : '—',
+    statut: a.statut ?? '',
+  };
+}
+
 export function AssuresList() {
   const { listQ, acOpen, setListQ, setAcOpen, openDetail, openWith } = useAppStore();
+  const { data, loading, error } = useFetch<{ items: ApiAssure[] }>('/assures?limit=100');
+  const all = (data?.items ?? []).map(mapAssure);
+
   const q = listQ.assures.trim();
-  const rows = q ? assures.filter((a) => norm(`${a.nom} ${a.prenom} ${a.id} ${a.profession}`).includes(norm(q))) : assures;
+  const rows = q ? all.filter((a) => norm(`${a.nom} ${a.prenom} ${a.id} ${a.profession}`).includes(norm(q))) : all;
   const open = acOpen === 'assures' && q.length > 0;
   const sugg = rows.slice(0, 2);
 
@@ -62,6 +90,15 @@ export function AssuresList() {
             </tr>
           </thead>
           <tbody>
+            {loading && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: 'var(--csi-muted)', fontSize: 13 }}>Chargement…</td></tr>
+            )}
+            {error && !loading && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: '#8b2231', fontSize: 13 }}>Erreur : {error}</td></tr>
+            )}
+            {!loading && !error && rows.length === 0 && (
+              <tr><td colSpan={TH.length} style={{ padding: '16px 14px', color: 'var(--csi-muted)', fontSize: 13 }}>Aucun assuré.</td></tr>
+            )}
             {rows.map((a) => (
               <Box as="tr" key={a.id} onClick={() => openDetail({ type: 'assure', data: a })} sx="border-top:1px solid var(--csi-border);font-size:13px;cursor:pointer;" hover="background:var(--csi-surface-2);">
                 <td style={{ padding: '13px 14px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--csi-text)' }}>{a.id}</td>
