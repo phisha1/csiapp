@@ -1,37 +1,42 @@
 import { Box } from '../../components/ui/Box';
 import { Icon } from '../../components/ui/Icon';
-import { consultations } from '../../data/sampleData';
+import { useFetch } from '../../lib/useApi';
 import { useAppStore } from '../../store/useAppStore';
 import type { ScreenKey } from '../../types';
 
-interface Kpi {
-  label: string;
-  value: string;
-  delta: string;
-  icon: string;
-  accent: string;
-  go: ScreenKey;
+interface ApiStats {
+  consultations: number;
+  feuilles: number;
+  prescriptions: number;
+  orientations: number;
+  recentConsultations: {
+    id: string;
+    date: string;
+    motif: string | null;
+    assure: { personne: { nom: string; prenom: string } };
+  }[];
 }
 
-const stats: Kpi[] = [
-  { label: 'Consultations effectuées', value: '312', delta: 'historique', icon: 'consultations', accent: 'var(--csi-primary)', go: 'consultations' },
-  { label: 'Feuilles créées', value: '124', delta: 'ce mois', icon: 'feuilles', accent: '#e07b1f', go: 'feuilles' },
-  { label: 'Prescriptions récentes', value: '46', delta: '7 cette semaine', icon: 'prescriptions', accent: '#1f8a4c', go: 'prescriptions' },
-  { label: 'Orientations spécialistes', value: '11', delta: 'ce mois', icon: 'arrow', accent: '#7d2433', go: 'prescrire_specialiste' },
-];
-
-const initialsOf = (name: string) => name.split(' ').map((w) => w[0]).slice(0, 2).join('');
+const initialsOf = (nom: string, prenom: string) => (nom[0] || '') + (prenom[0] || '');
 
 export function MedecinDashboard() {
   const { go, openWith } = useAppStore();
-  const recent = consultations.slice(0, 4);
+  const { data } = useFetch<ApiStats>('/stats');
+
+  const stats: { label: string; value: string; delta: string; icon: string; accent: string; go: ScreenKey }[] = [
+    { label: 'Consultations effectuées', value: data ? String(data.consultations) : '…', delta: 'historique', icon: 'consultations', accent: 'var(--csi-primary)', go: 'consultations' },
+    { label: 'Feuilles créées', value: data ? String(data.feuilles) : '…', delta: 'total', icon: 'feuilles', accent: '#e07b1f', go: 'feuilles' },
+    { label: 'Prescriptions', value: data ? String(data.prescriptions) : '…', delta: 'total', icon: 'prescriptions', accent: '#1f8a4c', go: 'prescriptions' },
+    { label: 'Orientations spécialistes', value: data ? String(data.orientations) : '…', delta: 'cumul', icon: 'arrow', accent: '#7d2433', go: 'prescrire_specialiste' },
+  ];
+  const recent = data?.recentConsultations ?? [];
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: 'var(--csi-text)', margin: '0 0 4px' }}>Bonjour, Dr. Atangana</h2>
-          <p style={{ margin: 0, color: 'var(--csi-text-2)', fontSize: 14 }}>Médecin généraliste — Centre Médical d'Etoudi</p>
+          <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: 'var(--csi-text)', margin: '0 0 4px' }}>Espace médecin</h2>
+          <p style={{ margin: 0, color: 'var(--csi-text-2)', fontSize: 14 }}>Votre activité — chiffres en temps réel</p>
         </div>
       </div>
 
@@ -55,14 +60,15 @@ export function MedecinDashboard() {
             <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--csi-text)', margin: 0 }}>Historique des consultations</h3>
             <button onClick={() => go('consultations')} style={{ fontSize: 13, color: 'var(--csi-text)', background: 'none', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Voir tout l'historique →</button>
           </div>
-          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--csi-muted)' }}>Les 4 consultations effectuées les plus récentes — cliquez pour ouvrir l'historique complet.</p>
+          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--csi-muted)' }}>Vos consultations les plus récentes — cliquez pour ouvrir l'historique complet.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {recent.length === 0 && <div style={{ fontSize: 13, color: 'var(--csi-muted)', padding: '8px 0' }}>Aucune consultation pour l'instant.</div>}
             {recent.map((c) => (
               <Box as="button" key={c.id} onClick={() => go('consultations')} sx="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--csi-border);border-radius:10px;background:var(--csi-surface);cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;" hover="background:var(--csi-surface-2);border-color:#d3dae4;">
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--csi-surface-2)', color: 'var(--csi-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flex: '0 0 40px' }}>{initialsOf(c.patient)}</div>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--csi-surface-2)', color: 'var(--csi-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flex: '0 0 40px' }}>{initialsOf(c.assure.personne.nom, c.assure.personne.prenom)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--csi-text)' }}>{c.patient}</div>
-                  <div style={{ fontSize: 12, color: 'var(--csi-text-2)' }}>{c.motif} · {c.date}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--csi-text)' }}>{c.assure.personne.nom} {c.assure.personne.prenom}</div>
+                  <div style={{ fontSize: 12, color: 'var(--csi-text-2)' }}>{c.motif ?? '—'} · {c.date ? c.date.slice(0, 10) : ''}</div>
                 </div>
                 <span style={{ background: '#e6f4ec', color: '#1f8a4c', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Terminée</span>
               </Box>
