@@ -10,6 +10,8 @@ import assuresRoutes from './modules/assures/assures.routes';
 import feuillesRoutes from './modules/feuilles/feuilles.routes';
 import medicamentsRoutes from './modules/medicaments/medicaments.routes';
 import prescriptionsRoutes from './modules/prescriptions/prescriptions.routes';
+import remboursementsRoutes from './modules/remboursements/remboursements.routes';
+import facturesRoutes from './modules/factures/factures.routes';
 
 export function createApp() {
   const app = express();
@@ -42,7 +44,8 @@ export function createApp() {
   app.use('/api/feuilles', feuillesRoutes);
   app.use('/api/medicaments', medicamentsRoutes);
   app.use('/api/prescriptions', prescriptionsRoutes);
-  // (remboursements, factures… seront montées ici dans les lots suivants)
+  app.use('/api/remboursements', remboursementsRoutes);
+  app.use('/api/factures', facturesRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
