@@ -68,7 +68,7 @@ export function validateMed(f: MedForm): Partial<Record<keyof MedForm, string>> 
   if (!v(f.email)) e.email = "L'adresse e-mail est obligatoire.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v(f.email))) e.email = 'Adresse e-mail invalide.';
   if (!v(f.mdp)) e.mdp = 'Le mot de passe provisoire est obligatoire.';
-  else if (v(f.mdp).length < 6) e.mdp = '6 caractères minimum.';
+  else if (v(f.mdp).length < 8) e.mdp = '8 caractères minimum.';
   return e;
 }
 
@@ -449,14 +449,29 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ---- feuille ----
   setFeuille: (k, val) => set((s) => ({ feuilleForm: { ...s.feuilleForm, [k]: val }, feuilleStatus: null })),
   touchFeuille: (k) => set((s) => ({ feuilleTouched: { ...s.feuilleTouched, [k]: true } })),
-  submitFeuille: () => {
-    const errs = validateFeuille(get().feuilleForm);
+  submitFeuille: async () => {
+    const f = get().feuilleForm;
+    const errs = validateFeuille(f);
     if (Object.keys(errs).length) {
       set({ feuilleTried: true, feuilleStatus: 'incomplete' });
       get().showToast('Feuille incomplète — corrigez les champs signalés');
       return;
     }
-    set({ feuilleSubmitted: true, feuilleStatus: null });
+    const montant = Number(String(f.montant).replace(/\s/g, '').replace(/[^\d.]/g, ''));
+    try {
+      const res = await api.post<{ code: string }>('/feuilles', {
+        numAssure: f.numAssure,
+        dateConsult: f.dateConsult,
+        montant,
+        diagnostic: f.diagnostic,
+        actes: f.actes || undefined,
+      });
+      get().go('feuilles');
+      get().showToast('Feuille ' + res.code + ' transmise');
+    } catch (e) {
+      set({ feuilleTried: true, feuilleStatus: 'incomplete' });
+      get().showToast(e instanceof ApiError ? e.message : "Échec de l'enregistrement de la feuille.");
+    }
   },
   resetFeuille: () => set({ feuilleSubmitted: false, feuilleTried: false, feuilleTouched: {}, feuilleStatus: null }),
   gotoFeuilles: () => get().go('feuilles'),
@@ -512,16 +527,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ---- médecin (enregistrement) ----
   setMed: (k, val) => set((s) => ({ medForm: { ...s.medForm, [k]: val } })),
   touchMed: (k) => set((s) => ({ medTouched: { ...s.medTouched, [k]: true } })),
-  submitMedecin: () => {
-    const errs = validateMed(get().medForm);
+  submitMedecin: async () => {
+    const f = get().medForm;
+    const errs = validateMed(f);
     if (Object.keys(errs).length) {
       set({ medTried: true });
       get().showToast('Formulaire incomplet — corrigez les champs signalés');
       return;
     }
-    set({ medForm: { ...EMPTY_MED_FORM }, medTouched: {}, medTried: false });
-    get().go('medecins');
-    get().showToast('Médecin enregistré · MED-067');
+    try {
+      const res = await api.post<{ numOrdre: string }>('/medecins', {
+        nom: f.nom,
+        prenom: f.prenom,
+        numOrdre: f.numOrdre,
+        type: f.type === 'Spécialiste' ? 'SPECIALISTE' : 'GENERALISTE',
+        specialite: f.specialite || undefined,
+        telephone: f.tel || undefined,
+        etablissement: f.etab || undefined,
+        email: f.email,
+        login: f.email,
+        motDePasse: f.mdp,
+      });
+      set({ medForm: { ...EMPTY_MED_FORM }, medTouched: {}, medTried: false });
+      get().go('medecins');
+      get().showToast('Médecin enregistré · ' + res.numOrdre);
+    } catch (e) {
+      get().showToast(e instanceof ApiError ? e.message : "Échec de l'enregistrement du médecin.");
+    }
   },
 
   // ---- prescriptions ----

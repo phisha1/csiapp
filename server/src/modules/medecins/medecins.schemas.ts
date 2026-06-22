@@ -4,8 +4,8 @@ export const createMedecinSchema = z
   .object({
     nom: z.string().min(1, 'Le nom est obligatoire.'),
     prenom: z.string().min(1, 'Le prénom est obligatoire.'),
-    sexe: z.enum(['M', 'F']),
-    dateNaissance: z.coerce.date(),
+    sexe: z.enum(['M', 'F']).optional(),
+    dateNaissance: z.coerce.date().optional(),
     telephone: z.string().optional(),
     email: z.string().email('Adresse e-mail invalide.').optional(),
     numOrdre: z.string().regex(/^CM-MED-\d{3,}$/i, 'Format attendu : CM-MED-001.'),
