@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { AuthScreen } from './screens/auth/AuthScreen';
 import { AppShell } from './components/layout/AppShell';
@@ -8,6 +9,12 @@ import { DetailModal } from './components/ui/DetailModal';
 export function App() {
   const authed = useAppStore((s) => s.authed);
   const theme = useAppStore((s) => s.theme);
+  const restoreSession = useAppStore((s) => s.restoreSession);
+
+  // Reconnexion automatique si un jeton JWT valide est présent.
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
 
   return (
     <div
