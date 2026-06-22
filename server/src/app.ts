@@ -5,6 +5,8 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { errorHandler, notFound } from './middlewares/errors';
 import authRoutes from './modules/auth/auth.routes';
+import medecinsRoutes from './modules/medecins/medecins.routes';
+import assuresRoutes from './modules/assures/assures.routes';
 
 export function createApp() {
   const app = express();
@@ -32,7 +34,9 @@ export function createApp() {
 
   // --- Routes métier ---
   app.use('/api/auth', authRoutes);
-  // (assures, medecins, feuilles… seront montées ici dans les lots suivants)
+  app.use('/api/medecins', medecinsRoutes);
+  app.use('/api/assures', assuresRoutes);
+  // (feuilles, prescriptions, remboursements… seront montées ici dans les lots suivants)
 
   app.use(notFound);
   app.use(errorHandler);
