@@ -63,6 +63,16 @@ async function main() {
     });
   }
 
+  // Catalogue de médicaments (BF8)
+  for (const m of [
+    { code: 'MED-0421', nom: 'Amoxicilline 500mg', forme: 'Comprimé' },
+    { code: 'MED-0107', nom: 'Paracétamol 1000mg', forme: 'Comprimé' },
+    { code: 'MED-0233', nom: 'Artéméther/Luméfantrine', forme: 'Comprimé' },
+    { code: 'MED-0501', nom: 'Ibuprofène 400mg', forme: 'Comprimé' },
+  ]) {
+    await prisma.medicamentCatalogue.upsert({ where: { code: m.code }, update: {}, create: m });
+  }
+
   console.log('✅ Seed terminé — comptes : assureur / medecin / specialiste (mot de passe : cnam2024).');
 }
 
