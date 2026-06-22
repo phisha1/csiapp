@@ -2,9 +2,11 @@ import { Box } from '../ui/Box';
 import { Icon } from '../ui/Icon';
 import { navConfig } from '../../data/navConfig';
 import { useAppStore } from '../../store/useAppStore';
+import { useViewport } from '../../lib/useViewport';
 
 export function Sidebar() {
-  const { role, screen, go, logout } = useAppStore();
+  const { role, screen, go, logout, navOpen } = useAppStore();
+  const { isMobile } = useViewport();
   const items = navConfig[role];
 
   const userName = role === 'assureur' ? 'A. Ngono' : 'Dr. Atangana';
@@ -12,8 +14,24 @@ export function Sidebar() {
   const roleLabel = role === 'assureur' ? 'Assureur · Agent CNAM' : 'Médecin';
   const avatarBg = role === 'assureur' ? '#7d2433' : '#14253f';
 
+  const base = { background: '#11233e', color: '#c7d3e4', display: 'flex', flexDirection: 'column' as const, height: '100vh' };
+  const asideStyle = isMobile
+    ? {
+        ...base,
+        position: 'fixed' as const,
+        top: 0,
+        left: 0,
+        width: 256,
+        maxWidth: '82vw',
+        zIndex: 80,
+        transform: navOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform .26s ease',
+        boxShadow: navOpen ? '0 0 50px rgba(0,0,0,.45)' : 'none',
+      }
+    : { ...base, flex: '0 0 248px' as const };
+
   return (
-    <aside style={{ flex: '0 0 248px', background: '#11233e', color: '#c7d3e4', display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <aside style={asideStyle}>
       <div style={{ padding: '20px 20px 18px', display: 'flex', alignItems: 'center', gap: 11, borderBottom: '1px solid rgba(255,255,255,.07)' }}>
         <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg, #e07b1f, #c2611a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', fontSize: 17 }}>
           C

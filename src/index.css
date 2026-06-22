@@ -145,3 +145,55 @@ button {
     left: 100%;
   }
 }
+
+/* ===================== Responsive (≤ 767px) =====================
+   L'app utilise des styles inline (pas de media queries inline possibles).
+   Ces règles centralisées s'appliquent globalement avec !important pour
+   l'emporter sur les styles inline — aucune modification écran par écran.
+   ----------------------------------------------------------------- */
+@media (max-width: 767px) {
+  /* Toutes les grilles inline (colonnes fixes, asides 1fr 300px, KPIs…)
+     s'empilent en une seule colonne. */
+  [style*='grid-template-columns'] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Les tableaux de liste deviennent défilables horizontalement
+     au lieu d'être tronqués (le conteneur a un overflow:hidden inline). */
+  main div:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  main table {
+    min-width: 600px;
+  }
+
+  /* Écran de connexion : on masque le panneau de marque et on resserre. */
+  .csi-auth-aside {
+    display: none !important;
+  }
+  .csi-auth-main {
+    padding: 22px 18px !important;
+  }
+
+  /* Fenêtres modales : jamais plus larges que l'écran. */
+  .csi-modal-panel {
+    width: auto !important;
+    max-width: calc(100vw - 28px) !important;
+  }
+
+  /* Barres d'outils des listes (recherche + filtres + actions) :
+     on empile en colonne pour que le champ de recherche occupe toute la
+     largeur au lieu d'être écrasé par les boutons (sinon il devient
+     invisible / inutilisable sur mobile). */
+  .csi-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .csi-toolbar > * {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    flex-wrap: wrap !important;
+  }
+}

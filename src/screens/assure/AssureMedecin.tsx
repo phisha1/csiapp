@@ -41,7 +41,7 @@ export function AssureMedecin() {
       <div style={{ background: 'var(--csi-surface)', border: '1px solid var(--csi-border)', borderRadius: 14, padding: 24, marginBottom: 18 }}>
         <h3 style={{ fontSize: 15, color: 'var(--csi-text)', margin: '0 0 4px' }}>1 · Rechercher l'assuré</h3>
         <p style={{ fontSize: 13, color: 'var(--csi-text-2)', margin: '0 0 16px' }}>Recherchez par nom, identifiant ou profession — les suggestions apparaissent à la saisie.</p>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="csi-toolbar" style={{ display: 'flex', gap: 10 }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <input
               value={query}

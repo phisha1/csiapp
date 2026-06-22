@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { Box } from '../../components/ui/Box';
 import { Icon } from '../../components/ui/Icon';
 import { useAppStore } from '../../store/useAppStore';
+import { useViewport } from '../../lib/useViewport';
 
 const labelStyle: CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--csi-text)', marginBottom: 6 };
 const inputObj: CSSProperties = { width: '100%', padding: '11px 12px', border: '1.5px solid var(--csi-border)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', background: 'var(--csi-surface)', color: 'var(--csi-text)' };
@@ -9,14 +10,15 @@ const loginInput: CSSProperties = { width: '100%', padding: '12px 14px', border:
 
 export function AuthScreen() {
   const s = useAppStore();
+  const { isMobile } = useViewport();
   const isLogin = s.authView === 'login';
   const isInscr = s.authView === 'inscription';
   const isDark = s.theme === 'sombre';
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100%' }}>
-      {/* ---- Panneau gauche (branding) ---- */}
-      <div style={{ flex: '0 0 42%', background: 'linear-gradient(160deg, #0e1c30 0%, #15294a 60%, #1b3358 100%)', color: '#fff', position: 'relative', overflow: 'hidden', padding: 56, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      {/* ---- Panneau gauche (branding) — masqué en mobile ---- */}
+      <div className="csi-auth-aside" style={{ flex: '0 0 42%', background: 'linear-gradient(160deg, #0e1c30 0%, #15294a 60%, #1b3358 100%)', color: '#fff', position: 'relative', overflow: 'hidden', padding: 56, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div style={{ position: 'absolute', right: -120, top: -80, width: 420, height: 420, border: '1px solid rgba(255,255,255,.07)', borderRadius: '50%' }} />
         <div style={{ position: 'absolute', right: -40, bottom: -160, width: 320, height: 320, border: '1px solid rgba(224,123,31,.18)', borderRadius: '50%' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
@@ -39,7 +41,7 @@ export function AuthScreen() {
       </div>
 
       {/* ---- Panneau droit ---- */}
-      <div style={{ flex: 1, position: 'relative', display: 'flex', overflowY: 'auto', background: 'var(--csi-bg)', padding: 40 }}>
+      <div className="csi-auth-main" style={{ flex: 1, position: 'relative', display: 'flex', overflowY: 'auto', background: 'var(--csi-bg)', padding: 40 }}>
         {/* Bascule de thème clair / sombre */}
         <Box
           as="button"
@@ -52,6 +54,22 @@ export function AuthScreen() {
         </Box>
 
         <div style={{ width: '100%', maxWidth: 420, margin: 'auto', animation: 'csiFade .5s ease' }}>
+          {/* Bandeau de marque compact — mobile uniquement (le grand panneau gauche est masqué) */}
+          {isMobile && (
+            <div style={{ background: 'linear-gradient(160deg, #0e1c30 0%, #15294a 60%, #1b3358 100%)', color: '#fff', borderRadius: 14, padding: '15px 17px', marginBottom: 22, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', right: -28, top: -28, width: 104, height: 104, border: '1px solid rgba(224,123,31,.18)', borderRadius: '50%' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 9, background: 'linear-gradient(135deg, #e07b1f, #c2611a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, boxShadow: '0 6px 16px rgba(224,123,31,.35)', flex: '0 0 40px' }}>C</div>
+                <div style={{ lineHeight: 1.25 }}>
+                  <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#9fb4d4' }}>République du Cameroun</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>CNAM · Assurance Maladie</div>
+                </div>
+              </div>
+              <div style={{ position: 'relative', marginTop: 12, fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase', color: '#e07b1f', fontWeight: 600 }}>Projet CSI — ENSPY</div>
+              <div style={{ position: 'relative', marginTop: 5, fontSize: 12.5, color: '#c2d0e6', lineHeight: 1.5 }}>Gestion des assurés, feuilles de maladie, prescriptions et remboursements.</div>
+            </div>
+          )}
+
           {/* ÉTAPE 0 : ACCUEIL */}
           {s.authStage === 'landing' && (
             <div style={{ textAlign: 'center' }}>
