@@ -4,6 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { errorHandler, notFound } from './middlewares/errors';
+import authRoutes from './modules/auth/auth.routes';
 
 export function createApp() {
   const app = express();
@@ -29,7 +30,9 @@ export function createApp() {
     res.json({ status: 'ok', service: 'csi-cnam-api', time: new Date().toISOString() });
   });
 
-  // --- Les routes métier (auth, assures, medecins, …) seront montées ici ---
+  // --- Routes métier ---
+  app.use('/api/auth', authRoutes);
+  // (assures, medecins, feuilles… seront montées ici dans les lots suivants)
 
   app.use(notFound);
   app.use(errorHandler);
