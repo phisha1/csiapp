@@ -7,6 +7,7 @@ import { errorHandler, notFound } from './middlewares/errors';
 import authRoutes from './modules/auth/auth.routes';
 import medecinsRoutes from './modules/medecins/medecins.routes';
 import assuresRoutes from './modules/assures/assures.routes';
+import feuillesRoutes from './modules/feuilles/feuilles.routes';
 
 export function createApp() {
   const app = express();
@@ -36,7 +37,8 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/medecins', medecinsRoutes);
   app.use('/api/assures', assuresRoutes);
-  // (feuilles, prescriptions, remboursements… seront montées ici dans les lots suivants)
+  app.use('/api/feuilles', feuillesRoutes);
+  // (prescriptions, remboursements… seront montées ici dans les lots suivants)
 
   app.use(notFound);
   app.use(errorHandler);
