@@ -27,9 +27,12 @@ interface Form {
   profession: string;
   employeur: string;
   modeRembPref: 'ESPECES' | 'VIREMENT';
+  banque: string;
+  numeroCompte: string;
+  titulaire: string;
 }
 
-const EMPTY: Form = { nom: '', prenom: '', dateNaissance: '', sexe: 'M', groupe: '', telephone: '', profession: '', employeur: '', modeRembPref: 'ESPECES' };
+const EMPTY: Form = { nom: '', prenom: '', dateNaissance: '', sexe: 'M', groupe: '', telephone: '', profession: '', employeur: '', modeRembPref: 'ESPECES', banque: '', numeroCompte: '', titulaire: '' };
 
 export function AssureNew() {
   const { go, showToast } = useAppStore();
@@ -51,7 +54,15 @@ export function AssureNew() {
     setStep(3);
   };
 
+  // Coordonnées bancaires : optionnelles, mais si entamées elles doivent être complètes.
+  const bankTouched = !!(f.banque || f.numeroCompte || f.titulaire);
+  const bankComplete = !!(f.banque && f.numeroCompte.replace(/\s/g, '').length >= 10 && f.titulaire);
+
   const submit = async () => {
+    if (bankTouched && !bankComplete) {
+      showToast('Complétez les coordonnées bancaires (banque, n° ≥ 10 caractères, titulaire) ou laissez-les vides.');
+      return;
+    }
     setBusy(true);
     try {
       const res = await api.post<{ matricule: string }>('/assures', {
@@ -64,6 +75,7 @@ export function AssureNew() {
         employeur: f.employeur || undefined,
         groupe: f.groupe || undefined,
         modeRembPref: f.modeRembPref,
+        coordBancaire: bankComplete ? { banque: f.banque, numeroCompte: f.numeroCompte.replace(/\s/g, ''), titulaire: f.titulaire } : undefined,
       });
       setMatricule(res.matricule);
       setStep(4);
@@ -115,6 +127,18 @@ export function AssureNew() {
               <div><label style={labelS}>Employeur</label><input value={f.employeur} onChange={(e) => set('employeur', e.target.value)} placeholder="MINESEC" style={inputS} /></div>
               <div><label style={labelS}>Mode de remboursement préféré</label><select value={f.modeRembPref} onChange={(e) => set('modeRembPref', e.target.value)} style={selectS}><option value="ESPECES">Espèces</option><option value="VIREMENT">Virement</option></select></div>
             </div>
+            <div style={{ marginTop: 18, borderTop: '1px dashed var(--csi-border)', paddingTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <h4 style={{ fontSize: 13.5, color: 'var(--csi-text)', margin: 0, fontWeight: 700 }}>Coordonnées bancaires</h4>
+                <span style={{ fontSize: 11, background: '#eef1f6', color: '#5a6678', padding: '2px 8px', borderRadius: 5 }}>Optionnel</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--csi-muted)', margin: '0 0 14px' }}>Pour les remboursements par virement. Le numéro de compte est chiffré en base de données.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div><label style={labelS}>Banque</label><input value={f.banque} onChange={(e) => set('banque', e.target.value)} placeholder="Afriland First Bank" style={inputS} /></div>
+                <div><label style={labelS}>Titulaire du compte</label><input value={f.titulaire} onChange={(e) => set('titulaire', e.target.value)} placeholder="Nom du titulaire" style={inputS} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label style={labelS}>Numéro de compte / RIB</label><input value={f.numeroCompte} onChange={(e) => set('numeroCompte', e.target.value)} placeholder="Ex : 10005 00012 12345678901 76" style={{ ...inputS, fontFamily: "'IBM Plex Mono', monospace" }} /></div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -129,6 +153,7 @@ export function AssureNew() {
                 ['Profession', f.profession || '—'],
                 ['Employeur', f.employeur || '—'],
                 ['Mode de remboursement', f.modeRembPref === 'VIREMENT' ? 'Virement' : 'Espèces'],
+                ...(bankTouched ? [['Compte bancaire', `${f.banque || '—'} · ****${f.numeroCompte.replace(/\s/g, '').slice(-4)}`]] : []),
               ].map(([k, val]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 15px', background: 'var(--csi-surface-2)', borderRadius: 9, fontSize: 13.5 }}>
                   <span style={{ color: 'var(--csi-text-2)' }}>{k}</span>
