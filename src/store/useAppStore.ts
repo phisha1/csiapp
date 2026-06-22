@@ -37,6 +37,10 @@ function loadTheme(): Theme {
 const today = '2026-06-20';
 const v = (x: unknown) => (x == null ? '' : String(x)).trim();
 
+/** Nombre de tentatives de connexion avant verrouillage du compte (cahier des besoins BNF1). */
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_MSG = `Compte bloqué après ${MAX_LOGIN_ATTEMPTS} tentatives échouées. Contactez l'administrateur pour le débloquer.`;
+
 /** Validation d'une feuille de maladie. */
 export function validateFeuille(f: FeuilleForm): Partial<Record<keyof FeuilleForm, string>> {
   const e: Partial<Record<keyof FeuilleForm, string>> = {};
@@ -345,7 +349,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   doLogin: () => {
     const { loginId, loginPw, loginLocked, loginAttempts } = get();
     if (loginLocked) {
-      set({ loginError: 'Compte bloqué après 3 tentatives échouées. Contactez l\'administrateur pour le débloquer.' });
+      set({ loginError: LOCK_MSG });
       return;
     }
     if (!loginId || !loginPw) {
@@ -358,10 +362,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     else if (loginId === 'medecin' && loginPw === 'cnam2024') role = 'medecin';
     if (!role) {
       const attempts = loginAttempts + 1;
-      if (attempts >= 3) {
-        set({ loginAttempts: attempts, loginLocked: true, loginError: 'Compte bloqué après 3 tentatives échouées. Contactez l\'administrateur pour le débloquer.' });
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        set({ loginAttempts: attempts, loginLocked: true, loginError: LOCK_MSG });
       } else {
-        set({ loginAttempts: attempts, loginError: `Identifiants incorrects. Tentative ${attempts}/3 — le compte sera bloqué après 3 échecs.` });
+        set({ loginAttempts: attempts, loginError: `Identifiants incorrects. Tentative ${attempts}/${MAX_LOGIN_ATTEMPTS} — le compte sera bloqué après ${MAX_LOGIN_ATTEMPTS} échecs.` });
       }
       return;
     }
