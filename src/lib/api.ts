@@ -47,6 +47,14 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return data as T;
 }
 
+/** Récupère une ressource binaire (ex. PDF) avec le jeton JWT. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new ApiError(res.status, `Erreur ${res.status}`);
+  return res.blob();
+}
+
 export const api = {
   get: <T = unknown>(p: string) => apiFetch<T>(p),
   post: <T = unknown>(p: string, body?: unknown) =>

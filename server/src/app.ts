@@ -13,6 +13,7 @@ import prescriptionsRoutes from './modules/prescriptions/prescriptions.routes';
 import remboursementsRoutes from './modules/remboursements/remboursements.routes';
 import facturesRoutes from './modules/factures/factures.routes';
 import auditRoutes from './modules/audit/audit.routes';
+import consultationsRoutes from './modules/consultations/consultations.routes';
 
 export function createApp() {
   const app = express();
@@ -48,6 +49,7 @@ export function createApp() {
   app.use('/api/remboursements', remboursementsRoutes);
   app.use('/api/factures', facturesRoutes);
   app.use('/api/audit', auditRoutes);
+  app.use('/api/consultations', consultationsRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
