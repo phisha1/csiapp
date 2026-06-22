@@ -10,6 +10,10 @@ const schema = z.object({
   JWT_EXPIRES_IN: z.string().default('2h'),
   MAX_LOGIN_ATTEMPTS: z.coerce.number().int().positive().default(5),
   AGENT_REGISTRATION_CODE: z.string().default('CNAM-AGENT-2024'),
+  ENCRYPTION_KEY: z
+    .string()
+    .min(16, 'ENCRYPTION_KEY doit faire au moins 16 caractères')
+    .default('dev-encryption-key-change-me-please'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
 });
 
