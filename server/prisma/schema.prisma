@@ -161,6 +161,8 @@ model MedecinTraitantHist {
   medecinId String
   dateDebut DateTime  @default(now())
   dateFin   DateTime?
+
+  @@index([assureId])
 }
 
 // Données bancaires sensibles → numeroCompte chiffré applicativement (BNF1).
@@ -187,6 +189,9 @@ model Consultation {
   suite      String?
   feuille    FeuilleMaladie?
   createdAt  DateTime        @default(now())
+
+  @@index([assureId])
+  @@index([medecinId])
 }
 
 model FeuilleMaladie {
@@ -208,6 +213,10 @@ model FeuilleMaladie {
   facture        Facture?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+
+  @@index([etat])
+  @@index([assureId])
+  @@index([medecinId])
 }
 
 model Prescription {
@@ -229,6 +238,10 @@ model Prescription {
   // Pour une prescription de médicaments (BF8) :
   lignes               OrdonnanceLigne[]
   createdAt            DateTime          @default(now())
+
+  @@index([feuilleId])
+  @@index([medecinId])
+  @@index([assureId])
 }
 
 // Catalogue de médicaments (BF8 : sélection « depuis un catalogue »).
@@ -266,6 +279,8 @@ model Remboursement {
   facture           Facture?
   date              DateTime?
   createdAt         DateTime            @default(now())
+
+  @@index([assureId])
 }
 
 model Facture {
@@ -281,6 +296,8 @@ model Facture {
   date            DateTime       @default(now())
   statut          String         @default("Émise")
   cheminPdf       String? // PDF généré pour impression (BF12)
+
+  @@index([assureId])
 }
 
 // Journal d'audit des actions critiques (BNF1 traçabilité, BNF7 rapports d'audit).
@@ -293,4 +310,8 @@ model JournalAudit {
   entiteId      String?
   details       Json?
   horodatage    DateTime     @default(now())
+
+  @@index([action])
+  @@index([horodatage])
+  @@index([utilisateurId])
 }
