@@ -14,6 +14,7 @@ import remboursementsRoutes from './modules/remboursements/remboursements.routes
 import facturesRoutes from './modules/factures/factures.routes';
 import auditRoutes from './modules/audit/audit.routes';
 import consultationsRoutes from './modules/consultations/consultations.routes';
+import statsRoutes from './modules/stats/stats.routes';
 
 export function createApp() {
   const app = express();
@@ -50,6 +51,7 @@ export function createApp() {
   app.use('/api/factures', facturesRoutes);
   app.use('/api/audit', auditRoutes);
   app.use('/api/consultations', consultationsRoutes);
+  app.use('/api/stats', statsRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

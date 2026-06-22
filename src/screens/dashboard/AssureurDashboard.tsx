@@ -1,27 +1,31 @@
 import { Box } from '../../components/ui/Box';
 import { Icon } from '../../components/ui/Icon';
 import { Badge } from '../../components/ui/Badge';
-import { feuilles } from '../../data/sampleData';
 import { fmt } from '../../lib/format';
+import { useFetch } from '../../lib/useApi';
 import { useAppStore } from '../../store/useAppStore';
 import type { ScreenKey } from '../../types';
 
-interface Kpi {
-  label: string;
-  value: string;
-  delta: string;
-  icon: string;
-  accent: string;
-  go: ScreenKey;
-}
+const ETAT_LABEL: Record<string, string> = {
+  BROUILLON: 'Brouillon', TRANSMISE: 'Transmise', EN_COURS: 'En cours de traitement',
+  INCOMPLETE: 'Incomplète', VALIDEE: 'Validée', REMBOURSEE: 'Remboursée', REFUSEE: 'Refusée', SUPPRIMEE: 'Supprimée',
+};
 
-const stats: Kpi[] = [
-  { label: 'Assurés enregistrés', value: '1 248', delta: '+24 ce mois', icon: 'assures', accent: 'var(--csi-primary)', go: 'assures' },
-  { label: 'Feuilles en attente', value: '37', delta: 'à traiter', icon: 'feuilles', accent: '#e07b1f', go: 'feuilles' },
-  { label: 'Remboursements effectués', value: '892', delta: '+58 ce mois', icon: 'remboursements', accent: '#1f8a4c', go: 'remboursements' },
-  { label: 'Factures générées', value: '874', delta: 'cumul', icon: 'factures', accent: '#2c4a86', go: 'factures' },
-  { label: 'Médecins enregistrés', value: '64', delta: '12 généralistes', icon: 'medecins', accent: '#7d2433', go: 'medecins' },
-];
+interface ApiStats {
+  assures: number;
+  feuillesAttente: number;
+  remboursements: number;
+  factures: number;
+  medecins: number;
+  generalistes: number;
+  recentFeuilles: {
+    code: string;
+    montant: string;
+    etat: string;
+    assure: { personne: { nom: string; prenom: string } };
+    medecin: { personne: { nom: string; prenom: string } };
+  }[];
+}
 
 const workflow: { n: number; t: string; a: string; s: ScreenKey }[] = [
   { n: 1, t: 'Inscription assuré', a: 'Assureur', s: 'assure_new' },
@@ -33,13 +37,24 @@ const workflow: { n: number; t: string; a: string; s: ScreenKey }[] = [
 
 export function AssureurDashboard() {
   const { go, openWith } = useAppStore();
+  const { data } = useFetch<ApiStats>('/stats');
+
+  const stats: { label: string; value: string; delta: string; icon: string; accent: string; go: ScreenKey }[] = [
+    { label: 'Assurés enregistrés', value: data ? String(data.assures) : '…', delta: 'total', icon: 'assures', accent: 'var(--csi-primary)', go: 'assures' },
+    { label: 'Feuilles en attente', value: data ? String(data.feuillesAttente) : '…', delta: 'à traiter', icon: 'feuilles', accent: '#e07b1f', go: 'feuilles' },
+    { label: 'Remboursements effectués', value: data ? String(data.remboursements) : '…', delta: 'cumul', icon: 'remboursements', accent: '#1f8a4c', go: 'remboursements' },
+    { label: 'Factures générées', value: data ? String(data.factures) : '…', delta: 'cumul', icon: 'factures', accent: '#2c4a86', go: 'factures' },
+    { label: 'Médecins enregistrés', value: data ? String(data.medecins) : '…', delta: data ? `${data.generalistes} généralistes` : '', icon: 'medecins', accent: '#7d2433', go: 'medecins' },
+  ];
+
+  const recent = data?.recentFeuilles ?? [];
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: 'var(--csi-text)', margin: '0 0 4px' }}>Bonjour, A. Ngono</h2>
-          <p style={{ margin: 0, color: 'var(--csi-text-2)', fontSize: 14 }}>Activité de l'organisme — vendredi 19 juin 2026</p>
+          <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: 'var(--csi-text)', margin: '0 0 4px' }}>Espace assureur</h2>
+          <p style={{ margin: 0, color: 'var(--csi-text-2)', fontSize: 14 }}>Activité de l'organisme — chiffres en temps réel</p>
         </div>
         <Box as="button" onClick={() => openWith('assure_new', 'assure_new')} sx="display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--csi-primary);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;" hover="background:var(--csi-primary-hover);">
           ＋ Inscrire un assuré
@@ -95,13 +110,14 @@ export function AssureurDashboard() {
             </tr>
           </thead>
           <tbody>
-            {feuilles.slice(0, 5).map((f) => (
+            {recent.length === 0 && <tr><td colSpan={5} style={{ padding: '12px 10px', color: 'var(--csi-muted)', fontSize: 13 }}>Aucune feuille pour l'instant.</td></tr>}
+            {recent.map((f) => (
               <Box as="tr" key={f.code} sx="border-top:1px solid var(--csi-border);font-size:13px;" hover="background:var(--csi-surface-2);">
                 <td style={{ padding: '11px 10px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--csi-text)', fontWeight: 500 }}>{f.code}</td>
-                <td style={{ padding: '11px 10px', color: 'var(--csi-text)' }}>{f.assure}</td>
-                <td style={{ padding: '11px 10px', color: 'var(--csi-text-2)' }}>{f.medecin}</td>
-                <td style={{ padding: '11px 10px', color: 'var(--csi-text)', fontWeight: 600 }}>{fmt(f.montant)}</td>
-                <td style={{ padding: '11px 10px' }}><Badge etat={f.etat} /></td>
+                <td style={{ padding: '11px 10px', color: 'var(--csi-text)' }}>{f.assure.personne.nom} {f.assure.personne.prenom}</td>
+                <td style={{ padding: '11px 10px', color: 'var(--csi-text-2)' }}>{f.medecin.personne.nom} {f.medecin.personne.prenom}</td>
+                <td style={{ padding: '11px 10px', color: 'var(--csi-text)', fontWeight: 600 }}>{fmt(Number(f.montant))}</td>
+                <td style={{ padding: '11px 10px' }}><Badge etat={ETAT_LABEL[f.etat] ?? f.etat} /></td>
               </Box>
             ))}
           </tbody>
