@@ -8,6 +8,7 @@ import type { OrientationInput, PrescrireMedicamentsInput } from './prescription
 const prescInclude = {
   feuille: true,
   specialite: true,
+  assure: { include: { personne: true } },
   medecin: { include: { personne: true } },
   medecinSpecialiste: { include: { personne: true, specialite: true } },
   lignes: { include: { medicament: true } },
