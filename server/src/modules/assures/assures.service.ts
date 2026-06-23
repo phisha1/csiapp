@@ -20,32 +20,49 @@ async function genMatricule(tx: Prisma.TransactionClient): Promise<string> {
 }
 
 const detailInclude = {
-  personne: true,
+  personne: { include: { medecin: { include: { specialite: true } } } },
   coordBancaire: true,
   traitant: { include: { personne: true } },
   traitantHist: { orderBy: { dateDebut: 'desc' as const }, include: { medecin: { include: { personne: true } } } },
 } satisfies Prisma.AssureInclude;
 
-/** Inscrit un assuré (BF3). */
+/** Inscrit un assuré (BF3). `medecinId` permet de lier à un médecin existant (dualité). */
 export async function createAssure(input: CreateAssureInput, actorId: string) {
   if (input.matricule && (await prisma.assure.findUnique({ where: { matricule: input.matricule } }))) {
     throw new AppError(409, 'Ce matricule est déjà utilisé.');
   }
-  const assure = await prisma.$transaction(async (tx) => {
-    const personne = await tx.personne.create({
-      data: {
-        nom: input.nom,
-        prenom: input.prenom,
-        sexe: input.sexe,
-        dateNaissance: input.dateNaissance,
-        telephone: input.telephone,
-        email: input.email,
-      },
+
+  // Dualité assuré/médecin : on réutilise la personne du médecin existant.
+  let personneIdLie: string | null = null;
+  if (input.medecinId) {
+    const medecin = await prisma.medecin.findUnique({
+      where: { id: input.medecinId },
+      include: { personne: { include: { assure: true } } },
     });
+    if (!medecin) throw new AppError(404, 'Médecin introuvable.');
+    if (medecin.personne.assure) throw new AppError(409, 'Ce médecin est déjà enregistré comme assuré.');
+    personneIdLie = medecin.personneId;
+  }
+
+  const assure = await prisma.$transaction(async (tx) => {
+    let personneId = personneIdLie;
+    if (!personneId) {
+      const personne = await tx.personne.create({
+        data: {
+          nom: input.nom!,
+          prenom: input.prenom!,
+          sexe: input.sexe!,
+          dateNaissance: input.dateNaissance!,
+          telephone: input.telephone,
+          email: input.email,
+        },
+      });
+      personneId = personne.id;
+    }
     const matricule = input.matricule ?? (await genMatricule(tx));
     return tx.assure.create({
       data: {
-        personneId: personne.id,
+        personneId,
         matricule,
         numeroSecu: input.numeroSecu,
         profession: input.profession,
@@ -62,10 +79,10 @@ export async function createAssure(input: CreateAssureInput, actorId: string) {
             }
           : undefined,
       },
-      include: { personne: true, coordBancaire: true },
+      include: { personne: { include: { medecin: true } }, coordBancaire: true },
     });
   });
-  await recordAudit({ utilisateurId: actorId, action: 'ASSURE_CREE', entite: 'Assure', entiteId: assure.id });
+  await recordAudit({ utilisateurId: actorId, action: 'ASSURE_CREE', entite: 'Assure', entiteId: assure.id, details: input.medecinId ? { lieAuMedecin: input.medecinId } : undefined });
   return serializeAssure(assure);
 }
 
@@ -88,7 +105,7 @@ export async function listAssures(params: { q?: string; skip: number; take: numb
       skip,
       take,
       orderBy: { createdAt: 'desc' },
-      include: { personne: true, traitant: { include: { personne: true } } },
+      include: { personne: { include: { medecin: { select: { id: true } } } }, traitant: { include: { personne: true } } },
     }),
   ]);
   return { total, items };

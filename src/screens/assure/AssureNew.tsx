@@ -1,6 +1,9 @@
 import { useState, type CSSProperties } from 'react';
 import { api, ApiError } from '../../lib/api';
+import { useFetch } from '../../lib/useApi';
 import { useAppStore } from '../../store/useAppStore';
+
+interface ApiMedecin { id: string; numOrdre: string; personne: { nom: string; prenom: string } }
 
 const labelS: CSSProperties = { display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--csi-text)', marginBottom: 7 };
 const inputS: CSSProperties = { width: '100%', padding: '11px 13px', border: '1.5px solid var(--csi-border)', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', outline: 'none', background: 'var(--csi-surface)', color: 'var(--csi-text)' };
@@ -42,11 +45,17 @@ export function AssureNew() {
   const [matricule, setMatricule] = useState<string | null>(null);
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
 
-  const step1Ok = f.nom.trim() && f.prenom.trim() && f.dateNaissance;
+  // Dualité : lier ce nouvel assuré à un médecin déjà enregistré (BF3).
+  const [lierMedecin, setLierMedecin] = useState(false);
+  const [medecinId, setMedecinId] = useState('');
+  const { data: medData } = useFetch<{ items: ApiMedecin[] }>('/medecins?limit=100');
+  const medecins = medData?.items ?? [];
+
+  const step1Ok = lierMedecin ? !!medecinId : f.nom.trim() && f.prenom.trim() && f.dateNaissance;
   const step2Ok = f.profession.trim().length > 0;
 
   const next1 = () => {
-    if (!step1Ok) { showToast('Nom, prénom et date de naissance sont obligatoires.'); return; }
+    if (!step1Ok) { showToast(lierMedecin ? 'Sélectionnez le médecin à lier.' : 'Nom, prénom et date de naissance sont obligatoires.'); return; }
     setStep(2);
   };
   const next2 = () => {
@@ -65,18 +74,28 @@ export function AssureNew() {
     }
     setBusy(true);
     try {
-      const res = await api.post<{ matricule: string }>('/assures', {
-        nom: f.nom,
-        prenom: f.prenom,
-        sexe: f.sexe,
-        dateNaissance: f.dateNaissance,
-        telephone: f.telephone || undefined,
-        profession: f.profession || undefined,
-        employeur: f.employeur || undefined,
-        groupe: f.groupe || undefined,
-        modeRembPref: f.modeRembPref,
-        coordBancaire: bankComplete ? { banque: f.banque, numeroCompte: f.numeroCompte.replace(/\s/g, ''), titulaire: f.titulaire } : undefined,
-      });
+      const coordBancaire = bankComplete ? { banque: f.banque, numeroCompte: f.numeroCompte.replace(/\s/g, ''), titulaire: f.titulaire } : undefined;
+      const res = await api.post<{ matricule: string }>('/assures', lierMedecin
+        ? {
+            medecinId,
+            profession: f.profession || undefined,
+            employeur: f.employeur || undefined,
+            groupe: f.groupe || undefined,
+            modeRembPref: f.modeRembPref,
+            coordBancaire,
+          }
+        : {
+            nom: f.nom,
+            prenom: f.prenom,
+            sexe: f.sexe,
+            dateNaissance: f.dateNaissance,
+            telephone: f.telephone || undefined,
+            profession: f.profession || undefined,
+            employeur: f.employeur || undefined,
+            groupe: f.groupe || undefined,
+            modeRembPref: f.modeRembPref,
+            coordBancaire,
+          });
       setMatricule(res.matricule);
       setStep(4);
     } catch (e) {
@@ -108,14 +127,32 @@ export function AssureNew() {
         {step === 1 && (
           <div style={{ animation: 'csiFade .3s ease' }}>
             <h3 style={{ fontSize: 16, color: 'var(--csi-text)', margin: '0 0 18px', fontFamily: "'IBM Plex Serif', serif" }}>Étape 1 · Informations personnelles</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div><label style={labelS}>Nom *</label><input value={f.nom} onChange={(e) => set('nom', e.target.value)} placeholder="Mbarga" style={inputS} /></div>
-              <div><label style={labelS}>Prénom *</label><input value={f.prenom} onChange={(e) => set('prenom', e.target.value)} placeholder="Jean-Pierre" style={inputS} /></div>
-              <div><label style={labelS}>Date de naissance *</label><input type="date" value={f.dateNaissance} onChange={(e) => set('dateNaissance', e.target.value)} style={selectS} /></div>
-              <div><label style={labelS}>Sexe *</label><select value={f.sexe} onChange={(e) => set('sexe', e.target.value)} style={selectS}><option value="M">Masculin</option><option value="F">Féminin</option></select></div>
-              <div><label style={labelS}>Groupe sanguin</label><input value={f.groupe} onChange={(e) => set('groupe', e.target.value)} placeholder="O+" style={inputS} /></div>
-              <div><label style={labelS}>Téléphone</label><input value={f.telephone} onChange={(e) => set('telephone', e.target.value)} placeholder="+237 6 ..." style={inputS} /></div>
-            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', border: '1.5px solid var(--csi-border)', borderRadius: 10, background: 'var(--csi-surface-2)', cursor: 'pointer', marginBottom: 18 }}>
+              <input type="checkbox" checked={lierMedecin} onChange={(e) => setLierMedecin(e.target.checked)} style={{ width: 17, height: 17, accentColor: 'var(--csi-primary)' }} />
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--csi-text)' }}>Cet assuré est déjà un médecin enregistré</span>
+              <span style={{ fontSize: 11, background: '#eef1f6', color: '#5a6678', padding: '2px 8px', borderRadius: 5 }}>Dualité</span>
+            </label>
+
+            {lierMedecin ? (
+              <div>
+                <label style={labelS}>Médecin à lier *</label>
+                <select value={medecinId} onChange={(e) => setMedecinId(e.target.value)} style={{ ...selectS, color: 'var(--csi-text)' }}>
+                  <option value="">— Choisir un médecin —</option>
+                  {medecins.map((m) => <option key={m.id} value={m.id}>{m.personne.nom} {m.personne.prenom} — {m.numOrdre}</option>)}
+                </select>
+                <p style={{ fontSize: 12, color: 'var(--csi-muted)', margin: '10px 0 0' }}>L'identité (nom, prénom, sexe, date de naissance) est reprise du dossier médecin.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div><label style={labelS}>Nom *</label><input value={f.nom} onChange={(e) => set('nom', e.target.value)} placeholder="Mbarga" style={inputS} /></div>
+                <div><label style={labelS}>Prénom *</label><input value={f.prenom} onChange={(e) => set('prenom', e.target.value)} placeholder="Jean-Pierre" style={inputS} /></div>
+                <div><label style={labelS}>Date de naissance *</label><input type="date" value={f.dateNaissance} onChange={(e) => set('dateNaissance', e.target.value)} style={selectS} /></div>
+                <div><label style={labelS}>Sexe *</label><select value={f.sexe} onChange={(e) => set('sexe', e.target.value)} style={selectS}><option value="M">Masculin</option><option value="F">Féminin</option></select></div>
+                <div><label style={labelS}>Groupe sanguin</label><input value={f.groupe} onChange={(e) => set('groupe', e.target.value)} placeholder="O+" style={inputS} /></div>
+                <div><label style={labelS}>Téléphone</label><input value={f.telephone} onChange={(e) => set('telephone', e.target.value)} placeholder="+237 6 ..." style={inputS} /></div>
+              </div>
+            )}
           </div>
         )}
 
