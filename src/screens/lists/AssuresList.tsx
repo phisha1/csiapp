@@ -14,11 +14,13 @@ interface ApiAssure {
   profession: string | null;
   groupe: string | null;
   statut: string;
-  personne: { nom: string; prenom: string; sexe: 'M' | 'F'; dateNaissance: string };
+  personne: { nom: string; prenom: string; sexe: 'M' | 'F'; dateNaissance: string; medecin?: { id: string } | null };
   traitant: { personne: { nom: string; prenom: string } } | null;
 }
 
-function mapAssure(a: ApiAssure): Assure {
+type AssureRow = Assure & { aussiMedecin: boolean };
+
+function mapAssure(a: ApiAssure): AssureRow {
   return {
     id: a.matricule,
     nom: a.personne.nom,
@@ -29,6 +31,7 @@ function mapAssure(a: ApiAssure): Assure {
     groupe: a.groupe ?? '',
     traitant: a.traitant ? `${a.traitant.personne.nom} ${a.traitant.personne.prenom}` : '—',
     statut: a.statut ?? '',
+    aussiMedecin: !!a.personne.medecin,
   };
 }
 
@@ -102,7 +105,10 @@ export function AssuresList() {
             {rows.map((a) => (
               <Box as="tr" key={a.id} onClick={() => openDetail({ type: 'assure', data: a })} sx="border-top:1px solid var(--csi-border);font-size:13px;cursor:pointer;" hover="background:var(--csi-surface-2);">
                 <td style={{ padding: '13px 14px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--csi-text)' }}>{a.id}</td>
-                <td style={{ padding: '13px 14px', color: 'var(--csi-text)', fontWeight: 600 }}>{a.nom} {a.prenom}</td>
+                <td style={{ padding: '13px 14px', color: 'var(--csi-text)', fontWeight: 600 }}>
+                  {a.nom} {a.prenom}
+                  {a.aussiMedecin && <span style={{ marginLeft: 8, background: '#f3ecf0', color: '#7d2433', border: '1px solid #e3d0da', padding: '1px 8px', borderRadius: 20, fontSize: 10.5, fontWeight: 600 }}>aussi médecin</span>}
+                </td>
                 <td style={{ padding: '13px 14px', color: 'var(--csi-text-2)' }}>{a.sexe === 'M' ? 'Masculin' : 'Féminin'}</td>
                 <td style={{ padding: '13px 14px', color: 'var(--csi-text-2)' }}>{a.profession}</td>
                 <td style={{ padding: '13px 14px', color: 'var(--csi-text-2)', fontFamily: "'IBM Plex Mono', monospace" }}>{a.groupe}</td>
