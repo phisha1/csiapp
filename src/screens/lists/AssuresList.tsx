@@ -11,10 +11,13 @@ const norm = (x: string) => x.toLowerCase();
 interface ApiAssure {
   id: string;
   matricule: string;
+  numeroSecu: string | null;
   profession: string | null;
+  employeur: string | null;
   groupe: string | null;
   statut: string;
-  personne: { nom: string; prenom: string; sexe: 'M' | 'F'; dateNaissance: string; medecin?: { id: string } | null };
+  modeRembPref: 'ESPECES' | 'VIREMENT';
+  personne: { nom: string; prenom: string; sexe: 'M' | 'F'; dateNaissance: string; telephone: string | null; email: string | null; medecin?: { id: string } | null };
   traitant: { personne: { nom: string; prenom: string } } | null;
 }
 
@@ -23,6 +26,7 @@ type AssureRow = Assure & { aussiMedecin: boolean };
 function mapAssure(a: ApiAssure): AssureRow {
   return {
     id: a.matricule,
+    dbId: a.id,
     nom: a.personne.nom,
     prenom: a.personne.prenom,
     sexe: a.personne.sexe,
@@ -31,13 +35,18 @@ function mapAssure(a: ApiAssure): AssureRow {
     groupe: a.groupe ?? '',
     traitant: a.traitant ? `${a.traitant.personne.nom} ${a.traitant.personne.prenom}` : '—',
     statut: a.statut ?? '',
+    numeroSecu: a.numeroSecu ?? '',
+    telephone: a.personne.telephone ?? '',
+    email: a.personne.email ?? '',
+    employeur: a.employeur ?? '',
+    modeRembPref: a.modeRembPref,
     aussiMedecin: !!a.personne.medecin,
   };
 }
 
 export function AssuresList() {
-  const { listQ, acOpen, setListQ, setAcOpen, openDetail, openWith } = useAppStore();
-  const { data, loading, error } = useFetch<{ items: ApiAssure[] }>('/assures?limit=100');
+  const { listQ, acOpen, setListQ, setAcOpen, openDetail, openWith, dataVersion } = useAppStore();
+  const { data, loading, error } = useFetch<{ items: ApiAssure[] }>(`/assures?limit=100&_v=${dataVersion}`);
   const all = (data?.items ?? []).map(mapAssure);
 
   const q = listQ.assures.trim();

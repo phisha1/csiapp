@@ -14,18 +14,20 @@ interface ApiMedecin {
   type: 'GENERALISTE' | 'SPECIALISTE';
   etablissement: string | null;
   specialite: { libelle: string } | null;
-  personne: { nom: string; prenom: string; telephone: string | null };
+  personne: { nom: string; prenom: string; telephone: string | null; email: string | null };
   _count?: { patientsTraites: number };
 }
 
 function mapMedecin(m: ApiMedecin): Medecin {
   return {
     id: m.numOrdre,
+    dbId: m.id,
     nom: `${m.personne.nom} ${m.personne.prenom}`,
     spec: m.specialite?.libelle ?? '—',
     type: m.type === 'SPECIALISTE' ? 'Spécialiste' : 'Généraliste',
     etab: m.etablissement ?? '—',
     tel: m.personne.telephone ?? '',
+    email: m.personne.email ?? '',
     patients: m._count?.patientsTraites ?? 0,
   };
 }
@@ -36,8 +38,8 @@ const typeBadge = (type: string) =>
     : 'display:inline-flex;background:#f3ecf0;color:#7d2433;border:1px solid #e3d0da;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;';
 
 export function MedecinsList() {
-  const { listQ, acOpen, setListQ, setAcOpen, openDetail, go } = useAppStore();
-  const { data, loading, error } = useFetch<{ items: ApiMedecin[] }>('/medecins?limit=100');
+  const { listQ, acOpen, setListQ, setAcOpen, openDetail, go, dataVersion } = useAppStore();
+  const { data, loading, error } = useFetch<{ items: ApiMedecin[] }>(`/medecins?limit=100&_v=${dataVersion}`);
   const all = (data?.items ?? []).map(mapMedecin);
 
   const q = listQ.medecins.trim();

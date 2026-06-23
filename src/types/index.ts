@@ -100,6 +100,13 @@ export interface Assure {
   groupe: string;
   traitant: string;
   statut: string;
+  // Identifiant réel (uuid) + champs pour consultation/modification via l'API.
+  dbId?: string;
+  numeroSecu?: string;
+  telephone?: string;
+  email?: string;
+  employeur?: string;
+  modeRembPref?: 'ESPECES' | 'VIREMENT';
 }
 
 export interface Medecin {
@@ -110,6 +117,8 @@ export interface Medecin {
   etab: string;
   tel: string;
   patients: number;
+  dbId?: string;
+  email?: string;
 }
 
 export interface Feuille {

@@ -138,6 +138,9 @@ interface AppState {
   theme: Theme;
   /** Tiroir de navigation ouvert (mobile uniquement). */
   navOpen: boolean;
+  /** Incrémenté après une écriture (édition) → force le rechargement des listes. */
+  dataVersion: number;
+  bumpData: () => void;
 
   // ----- listes -----
   listQ: ListQuery;
@@ -286,6 +289,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   toast: null,
   theme: loadTheme(),
   navOpen: false,
+  dataVersion: 0,
+  bumpData: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
 
   listQ: { assures: '', medecins: '', feuilles: '' },
   acOpen: null,

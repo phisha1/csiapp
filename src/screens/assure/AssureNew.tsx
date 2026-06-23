@@ -27,6 +27,7 @@ interface Form {
   sexe: 'M' | 'F';
   groupe: string;
   telephone: string;
+  numeroSecu: string;
   profession: string;
   employeur: string;
   modeRembPref: 'ESPECES' | 'VIREMENT';
@@ -35,7 +36,7 @@ interface Form {
   titulaire: string;
 }
 
-const EMPTY: Form = { nom: '', prenom: '', dateNaissance: '', sexe: 'M', groupe: '', telephone: '', profession: '', employeur: '', modeRembPref: 'ESPECES', banque: '', numeroCompte: '', titulaire: '' };
+const EMPTY: Form = { nom: '', prenom: '', dateNaissance: '', sexe: 'M', groupe: '', telephone: '', numeroSecu: '', profession: '', employeur: '', modeRembPref: 'ESPECES', banque: '', numeroCompte: '', titulaire: '' };
 
 export function AssureNew() {
   const { go, showToast } = useAppStore();
@@ -78,6 +79,7 @@ export function AssureNew() {
       const res = await api.post<{ matricule: string }>('/assures', lierMedecin
         ? {
             medecinId,
+            numeroSecu: f.numeroSecu || undefined,
             profession: f.profession || undefined,
             employeur: f.employeur || undefined,
             groupe: f.groupe || undefined,
@@ -90,6 +92,7 @@ export function AssureNew() {
             sexe: f.sexe,
             dateNaissance: f.dateNaissance,
             telephone: f.telephone || undefined,
+            numeroSecu: f.numeroSecu || undefined,
             profession: f.profession || undefined,
             employeur: f.employeur || undefined,
             groupe: f.groupe || undefined,
@@ -162,6 +165,7 @@ export function AssureNew() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div><label style={labelS}>Profession *</label><input value={f.profession} onChange={(e) => set('profession', e.target.value)} placeholder="Enseignant" style={inputS} /></div>
               <div><label style={labelS}>Employeur</label><input value={f.employeur} onChange={(e) => set('employeur', e.target.value)} placeholder="MINESEC" style={inputS} /></div>
+              <div><label style={labelS}>N° de sécurité sociale</label><input value={f.numeroSecu} onChange={(e) => set('numeroSecu', e.target.value)} placeholder="N° d'immatriculation" style={{ ...inputS, fontFamily: "'IBM Plex Mono', monospace" }} /></div>
               <div><label style={labelS}>Mode de remboursement préféré</label><select value={f.modeRembPref} onChange={(e) => set('modeRembPref', e.target.value)} style={selectS}><option value="ESPECES">Espèces</option><option value="VIREMENT">Virement</option></select></div>
             </div>
             <div style={{ marginTop: 18, borderTop: '1px dashed var(--csi-border)', paddingTop: 16 }}>
