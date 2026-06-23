@@ -1,0 +1,2 @@
+# Le backend est déployé séparément (Render) — exclu du déploiement front Vercel.
+server

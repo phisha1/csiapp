@@ -19,9 +19,16 @@ import statsRoutes from './modules/stats/stats.routes';
 export function createApp() {
   const app = express();
 
+  // Derrière le proxy de l'hébergeur (Render) en production : nécessaire pour
+  // que req.ip / rate-limit fonctionnent correctement.
+  if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
+
+  // Origines autorisées (CORS_ORIGIN peut lister plusieurs URLs séparées par des virgules).
+  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
+
   // Sécurité HTTP de base (BNF1)
   app.use(helmet());
-  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+  app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json());
 
   // Limitation de débit globale (atténue le brute-force — BNF1)
