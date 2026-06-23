@@ -36,6 +36,7 @@ export const createAssureSchema = z
 export const updateAssureSchema = z.object({
   telephone: z.string().optional(),
   email: z.string().email('Adresse e-mail invalide.').optional(),
+  numeroSecu: z.string().optional(),
   profession: z.string().optional(),
   employeur: z.string().optional(),
   groupe: z.string().optional(),

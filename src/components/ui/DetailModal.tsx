@@ -43,7 +43,7 @@ export function DetailModal() {
   const startEdit = () => {
     setForm(
       isAssure
-        ? { telephone: a.telephone ?? '', email: a.email ?? '', profession: a.profession ?? '', employeur: a.employeur ?? '', groupe: a.groupe ?? '', statut: a.statut || 'Actif', modeRembPref: a.modeRembPref ?? 'ESPECES' }
+        ? { telephone: a.telephone ?? '', email: a.email ?? '', numeroSecu: a.numeroSecu ?? '', profession: a.profession ?? '', employeur: a.employeur ?? '', groupe: a.groupe ?? '', statut: a.statut || 'Actif', modeRembPref: a.modeRembPref ?? 'ESPECES' }
         : { telephone: m.tel ?? '', email: m.email ?? '', etablissement: m.etab === '—' ? '' : m.etab, specialite: m.spec === '—' ? '' : m.spec },
     );
     setEditing(true);
@@ -56,6 +56,7 @@ export function DetailModal() {
         await api.patch(`/assures/${a.dbId}`, {
           telephone: form.telephone || undefined,
           email: form.email || undefined,
+          numeroSecu: form.numeroSecu || undefined,
           profession: form.profession || undefined,
           employeur: form.employeur || undefined,
           groupe: form.groupe || undefined,
@@ -98,6 +99,7 @@ export function DetailModal() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div><label style={labelS}>Téléphone</label><input value={form.telephone} onChange={(e) => set('telephone', e.target.value)} style={inputS} /></div>
                 <div><label style={labelS}>E-mail</label><input value={form.email} onChange={(e) => set('email', e.target.value)} style={inputS} /></div>
+                <div><label style={labelS}>N° sécurité sociale</label><input value={form.numeroSecu} onChange={(e) => set('numeroSecu', e.target.value)} style={{ ...inputS, fontFamily: "'IBM Plex Mono', monospace" }} /></div>
                 <div><label style={labelS}>Profession</label><input value={form.profession} onChange={(e) => set('profession', e.target.value)} style={inputS} /></div>
                 <div><label style={labelS}>Employeur</label><input value={form.employeur} onChange={(e) => set('employeur', e.target.value)} style={inputS} /></div>
                 <div><label style={labelS}>Groupe sanguin</label><input value={form.groupe} onChange={(e) => set('groupe', e.target.value)} style={inputS} /></div>
