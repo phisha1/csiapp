@@ -124,6 +124,7 @@ export async function updateAssure(id: string, input: UpdateAssureInput, actorId
   const updated = await prisma.assure.update({
     where: { id },
     data: {
+      numeroSecu: input.numeroSecu,
       profession: input.profession,
       employeur: input.employeur,
       groupe: input.groupe,
