@@ -1,0 +1,41 @@
+# Blueprint Render — backend Express/Prisma + base PostgreSQL gérée.
+# Déploiement : Render → New → Blueprint → sélectionner ce dépôt.
+# (Le front React est déployé séparément sur Vercel — voir DEPLOY.md.)
+
+databases:
+  - name: csi-cnam-db
+    databaseName: csi_cnam
+    plan: free
+
+services:
+  - type: web
+    name: csi-cnam-api
+    runtime: node
+    plan: free
+    rootDir: server
+    # Génère le client Prisma, compile, puis applique les migrations sur la base.
+    buildCommand: npm install && npm run build && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # URL de la base : injectée automatiquement depuis la base gérée ci-dessus.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: csi-cnam-db
+          property: connectionString
+      # Secrets : à renseigner dans le dashboard Render (Environment).
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      # URL(s) du front Vercel autorisées (séparées par des virgules si plusieurs).
+      - key: CORS_ORIGIN
+        sync: false
+      - key: AGENT_REGISTRATION_CODE
+        value: CNAM-AGENT-2024
+      - key: JWT_EXPIRES_IN
+        value: 2h
+      - key: MAX_LOGIN_ATTEMPTS
+        value: "5"
