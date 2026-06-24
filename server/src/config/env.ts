@@ -15,6 +15,8 @@ const schema = z.object({
     .min(16, 'ENCRYPTION_KEY doit faire au moins 16 caractères')
     .default('dev-encryption-key-change-me-please'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  // Plafond du rate-limit global, par IP, sur 15 min (BNF2 : doit absorber ~50 utilisateurs).
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
 });
 
 const parsed = schema.safeParse(process.env);

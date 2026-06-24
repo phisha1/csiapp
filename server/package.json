@@ -13,6 +13,7 @@
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
     "backup": "tsx scripts/backup.ts",
+    "loadtest": "tsx scripts/loadtest.ts",
     "test": "vitest run"
   },
   "dependencies": {
