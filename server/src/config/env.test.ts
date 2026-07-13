@@ -7,6 +7,7 @@ const productionEnvironment = {
   JWT_SECRET: 'jwt_7f515f2c7cdf451498a70da10f59c1d9',
   ENCRYPTION_KEY: 'enc_8bd441147b57447ea2de6185b220606b',
   CORS_ORIGIN: 'https://app.cnam.example',
+  RELEASE_SHA: 'acb2895',
 };
 
 describe('configuration de production', () => {
@@ -38,5 +39,10 @@ describe('configuration de production', () => {
 
   it('accepte des secrets distincts et des origines HTTPS', () => {
     expect(environmentSchema.safeParse(productionEnvironment).success).toBe(true);
+  });
+
+  it('refuse une version de déploiement non identifiable', () => {
+    const result = environmentSchema.safeParse({ ...productionEnvironment, RELEASE_SHA: 'local' });
+    expect(result.success).toBe(false);
   });
 });

@@ -9,10 +9,22 @@ const server = app.listen(env.PORT, () => {
 });
 
 // Arrêt propre : on ferme la connexion à la base.
+let isShuttingDown = false;
 async function shutdown(signal: string) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
   console.log(`\n${signal} reçu — arrêt en cours…`);
+
+  const forceExit = setTimeout(() => {
+    console.error(`Arrêt forcé après ${env.SHUTDOWN_TIMEOUT_SECONDS} secondes.`);
+    process.exit(1);
+  }, env.SHUTDOWN_TIMEOUT_SECONDS * 1_000);
+  forceExit.unref();
+
+  server.closeIdleConnections();
   server.close(async () => {
     await prisma.$disconnect();
+    clearTimeout(forceExit);
     process.exit(0);
   });
 }

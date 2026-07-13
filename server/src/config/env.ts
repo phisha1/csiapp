@@ -25,6 +25,8 @@ export const environmentSchema = z.object({
   SESSION_COOKIE_MAX_AGE_SECONDS: z.coerce.number().int().min(300).max(86400).default(7200),
   MAX_LOGIN_ATTEMPTS: z.coerce.number().int().positive().default(5),
   TEMP_PASSWORD_EXPIRES_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+  SHUTDOWN_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(60).default(15),
+  RELEASE_SHA: z.string().trim().min(1).default('local'),
   ENCRYPTION_KEY: z
     .string()
     .min(16, 'ENCRYPTION_KEY doit faire au moins 16 caractères')
@@ -54,6 +56,13 @@ export const environmentSchema = z.object({
       code: 'custom',
       path: ['ENCRYPTION_KEY'],
       message: 'La clé de chiffrement doit être distincte du secret de session',
+    });
+  }
+  if (value.RELEASE_SHA === 'local') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['RELEASE_SHA'],
+      message: 'RELEASE_SHA doit identifier précisément la version déployée',
     });
   }
 

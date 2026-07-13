@@ -21,15 +21,23 @@ export function notFound(_req: Request, res: Response) {
 /** Gestionnaire d'erreurs centralisé : messages explicites en français (BNF5). */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+  const requestId = res.locals.requestId as string | undefined;
   if (err instanceof ZodError) {
     return res.status(422).json({
       message: 'Données invalides — corrigez les champs signalés.',
       erreurs: err.flatten().fieldErrors,
+      requestId,
     });
   }
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({ message: err.message, details: err.details });
+    return res.status(err.statusCode).json({ message: err.message, details: err.details, requestId });
   }
-  console.error('Erreur non gérée :', err);
-  return res.status(500).json({ message: 'Erreur interne du serveur.' });
+  console.error(JSON.stringify({
+    level: 'error',
+    event: 'unhandled_error',
+    requestId,
+    message: err instanceof Error ? err.message : 'Erreur inconnue',
+    stack: err instanceof Error ? err.stack : undefined,
+  }));
+  return res.status(500).json({ message: 'Erreur interne du serveur.', requestId });
 }

@@ -41,6 +41,7 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run prisma:generate
       - run: npm run typecheck
+      - run: npm run typecheck:tools
       - run: npm test
       - run: npm run build
 
@@ -48,6 +49,8 @@ jobs:
     name: Frontend
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      VITE_API_URL: https://api.cnam.example/api
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
