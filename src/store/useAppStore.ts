@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, ApiError, getToken, setToken } from '../lib/api';
+import { api, ApiError, clearLegacyBrowserToken } from '../lib/api';
 import type {
   Assure,
   AuthStage,
@@ -117,6 +117,7 @@ const FORM_RESET = {
 interface AppState {
   // ----- authentification -----
   authed: boolean;
+  sessionChecked: boolean;
   authStage: AuthStage;
   role: Role;
   userId: string;
@@ -193,7 +194,7 @@ interface AppState {
   setLoginId: (val: string) => void;
   setLoginPw: (val: string) => void;
   doLogin: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
 
   // listes
@@ -265,6 +266,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   authed: false,
+  sessionChecked: false,
   authStage: 'landing',
   role: 'assureur',
   userId: '',
@@ -357,11 +359,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     try {
-      const res = await api.post<{ token: string; utilisateur: { id: string; login: string; role: string; doitChangerMotDePasse: boolean; motDePasseTemporaireExpireLe: string | null } }>('/auth/login', {
+      const res = await api.post<{ utilisateur: { id: string; login: string; role: string; doitChangerMotDePasse: boolean; motDePasseTemporaireExpireLe: string | null } }>('/auth/login', {
         login: loginId,
         motDePasse: loginPw,
       });
-      setToken(res.token);
       const role: Role = res.utilisateur.role === 'ADMIN'
         ? 'admin'
         : res.utilisateur.role === 'ASSUREUR'
@@ -369,6 +370,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           : 'medecin';
       set({
         authed: true,
+        sessionChecked: true,
         role,
         userId: res.utilisateur.id,
         userLogin: res.utilisateur.login,
@@ -388,13 +390,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
   },
-  logout: () => {
-    setToken(null);
-    set({ authed: false, authStage: 'landing', userId: '', userLogin: '', mustChangePassword: false, temporaryPasswordExpiresAt: null, loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Même si le réseau est indisponible, l'interface locale doit fermer la session.
+    } finally {
+      set({ authed: false, sessionChecked: true, authStage: 'landing', userId: '', userLogin: '', mustChangePassword: false, temporaryPasswordExpiresAt: null, loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
+    }
   },
-  // Restaure la session au démarrage si un jeton valide existe.
+  // Restaure la session au démarrage depuis le cookie HttpOnly.
   restoreSession: async () => {
-    if (!getToken()) return;
+    clearLegacyBrowserToken();
     try {
       const res = await api.get<{ utilisateur: { id: string; login: string; role: string; doitChangerMotDePasse: boolean; motDePasseTemporaireExpireLe: string | null } }>('/auth/me');
       const role: Role = res.utilisateur.role === 'ADMIN'
@@ -404,6 +411,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           : 'medecin';
       set({
         authed: true,
+        sessionChecked: true,
         role,
         userId: res.utilisateur.id,
         userLogin: res.utilisateur.login,
@@ -412,7 +420,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         screen: role === 'admin' ? 'admin_users' : get().screen,
       });
     } catch {
-      setToken(null);
+      set({ authed: false, sessionChecked: true });
     }
   },
 

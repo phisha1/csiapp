@@ -35,6 +35,8 @@ services:
         sync: false
       - key: JWT_EXPIRES_IN
         value: 2h
+      - key: SESSION_COOKIE_MAX_AGE_SECONDS
+        value: "7200"
       - key: MAX_LOGIN_ATTEMPTS
         value: "5"
       - key: TEMP_PASSWORD_EXPIRES_HOURS

@@ -78,7 +78,7 @@ export function Sidebar() {
             <div style={{ fontWeight: 600, color: '#fff', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userName}</div>
             <div style={{ fontSize: 11, color: '#8294b2' }}>{roleLabel}</div>
           </div>
-          <Box as="button" onClick={logout} title="Déconnexion" sx="background:none;border:none;color:#8294b2;cursor:pointer;padding:4px;display:inline-flex;" hover="color:#fff;">
+          <Box as="button" onClick={() => void logout()} title="Déconnexion" sx="background:none;border:none;color:#8294b2;cursor:pointer;padding:4px;display:inline-flex;" hover="color:#fff;">
             <Icon name="power" size={15} width={2} />
           </Box>
         </div>

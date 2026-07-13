@@ -59,7 +59,7 @@ export function ChangePasswordScreen() {
         nouveauMotDePasse: newPassword,
       });
       showToast('Mot de passe modifié. Reconnectez-vous avec votre nouveau mot de passe.');
-      logout();
+      void logout();
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Modification du mot de passe impossible.');
     } finally {
@@ -97,7 +97,7 @@ export function ChangePasswordScreen() {
           <button type="submit" disabled={saving} style={{ width: '100%', border: 'none', borderRadius: 9, padding: 12, background: saving ? '#8c97a7' : 'var(--csi-primary)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'wait' : 'pointer' }}>
             {saving ? 'Modification…' : 'Définir mon nouveau mot de passe'}
           </button>
-          <button type="button" onClick={logout} style={{ width: '100%', border: 'none', background: 'transparent', color: 'var(--csi-text-2)', padding: '12px 0 0', cursor: 'pointer', fontSize: 12.5 }}>Annuler et se déconnecter</button>
+          <button type="button" onClick={() => void logout()} style={{ width: '100%', border: 'none', background: 'transparent', color: 'var(--csi-text-2)', padding: '12px 0 0', cursor: 'pointer', fontSize: 12.5 }}>Annuler et se déconnecter</button>
         </form>
       </div>
     </div>
