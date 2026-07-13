@@ -1,4 +1,4 @@
-export type Role = 'assureur' | 'medecin';
+export type Role = 'admin' | 'assureur' | 'medecin';
 export type AuthStage = 'landing' | 'form';
 export type Theme = 'clair' | 'sombre';
 export type RembMode = 'especes' | 'virement' | null;
@@ -9,6 +9,7 @@ export type ListField = 'assures' | 'medecins' | 'feuilles';
 /** Clé d'écran (équivalent de `screen` dans le prototype). */
 export type ScreenKey =
   | 'dashboard'
+  | 'admin_users'
   | 'assures'
   | 'assure_new'
   | 'assure_medecin'

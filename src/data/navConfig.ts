@@ -8,6 +8,9 @@ export interface NavEntry {
 
 /** Configuration de navigation par rôle (fidèle à `navConfig()`). */
 export const navConfig: Record<Role, NavEntry[]> = {
+  admin: [
+    { key: 'admin_users', label: 'Gestion des comptes' },
+  ],
   assureur: [
     { key: 'dashboard', label: 'Tableau de bord' },
     { key: 'assures', label: 'Assurés' },

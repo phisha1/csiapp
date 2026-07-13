@@ -13,6 +13,7 @@ const publicSelect = {
   statut: true,
   nbEchecs: true,
   derniereConnexion: true,
+  doitChangerMotDePasse: true,
   createdAt: true,
 } as const;
 
@@ -77,6 +78,14 @@ export async function suspendre(id: string, adminId: string) {
   }
   const user = await prisma.utilisateur.findUnique({ where: { id } });
   if (!user) throw new AppError(404, 'Utilisateur introuvable.');
+  if (user.role === Role.ADMIN) {
+    const activeAdmins = await prisma.utilisateur.count({
+      where: { role: Role.ADMIN, statut: StatutCompte.ACTIF },
+    });
+    if (activeAdmins <= 1) {
+      throw new AppError(400, 'Impossible de suspendre le dernier administrateur actif.');
+    }
+  }
   const updated = await prisma.utilisateur.update({
     where: { id },
     data: { statut: StatutCompte.SUSPENDU },
@@ -92,6 +101,9 @@ export async function suspendre(id: string, adminId: string) {
  * invalide les sessions et force le changement à la prochaine connexion.
  */
 export async function reinitialiserMotDePasse(id: string, adminId: string) {
+  if (id === adminId) {
+    throw new AppError(400, 'Utilisez vos paramètres pour changer votre propre mot de passe.');
+  }
   const user = await prisma.utilisateur.findUnique({ where: { id } });
   if (!user) throw new AppError(404, 'Utilisateur introuvable.');
 

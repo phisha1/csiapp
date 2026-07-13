@@ -5,14 +5,14 @@ import { useAppStore } from '../../store/useAppStore';
 import { useViewport } from '../../lib/useViewport';
 
 export function Sidebar() {
-  const { role, screen, go, logout, navOpen } = useAppStore();
+  const { role, screen, go, logout, navOpen, userLogin } = useAppStore();
   const { isMobile } = useViewport();
   const items = navConfig[role];
 
-  const userName = role === 'assureur' ? 'A. Ngono' : 'Dr. Atangana';
-  const userInitials = role === 'assureur' ? 'AN' : 'DA';
-  const roleLabel = role === 'assureur' ? 'Assureur · Agent CNAM' : 'Médecin';
-  const avatarBg = role === 'assureur' ? '#7d2433' : '#14253f';
+  const userName = userLogin || 'Utilisateur';
+  const userInitials = userName.slice(0, 2).toUpperCase();
+  const roleLabel = role === 'admin' ? 'Administrateur' : role === 'assureur' ? 'Assureur · Agent CNAM' : 'Médecin';
+  const avatarBg = role === 'admin' ? '#b85c16' : role === 'assureur' ? '#7d2433' : '#14253f';
 
   const base = { background: '#11233e', color: '#c7d3e4', display: 'flex', flexDirection: 'column' as const, height: '100vh' };
   const asideStyle = isMobile
