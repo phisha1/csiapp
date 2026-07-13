@@ -6,6 +6,7 @@ import { encrypt, maskAccount } from '../../lib/crypto';
 import type { CreateAssureInput, UpdateAssureInput } from './assures.schemas';
 import type { AuthUser } from '../../lib/jwt';
 import { patientDirectoryWhere, resolveMedicalActor } from '../../lib/medicalAccess';
+import { medicalMedecinSelect } from '../../lib/medicalProjections';
 
 /** Masque le numéro de compte chiffré avant de renvoyer l'assuré (BNF1). */
 function serializeAssure<T extends { coordBancaire?: { numeroCompte: string } | null }>(a: T): T {
@@ -22,10 +23,13 @@ async function genMatricule(tx: Prisma.TransactionClient): Promise<string> {
 }
 
 const detailInclude = {
-  personne: { include: { medecin: { include: { specialite: true } } } },
+  personne: { include: { medecin: { select: medicalMedecinSelect } } },
   coordBancaire: true,
-  traitant: { include: { personne: true } },
-  traitantHist: { orderBy: { dateDebut: 'desc' as const }, include: { medecin: { include: { personne: true } } } },
+  traitant: { select: medicalMedecinSelect },
+  traitantHist: {
+    orderBy: { dateDebut: 'desc' as const },
+    include: { medecin: { select: medicalMedecinSelect } },
+  },
 } satisfies Prisma.AssureInclude;
 
 // Vue minimale pour un médecin : aucune donnée bancaire, professionnelle ou de remboursement.
@@ -106,7 +110,7 @@ export async function createAssure(input: CreateAssureInput, actorId: string) {
             }
           : undefined,
       },
-      include: { personne: { include: { medecin: true } }, coordBancaire: true },
+      include: detailInclude,
     });
   });
   await recordAudit({ utilisateurId: actorId, action: 'ASSURE_CREE', entite: 'Assure', entiteId: assure.id, details: input.medecinId ? { lieAuMedecin: input.medecinId } : undefined });

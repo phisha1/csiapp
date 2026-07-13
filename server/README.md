@@ -41,6 +41,15 @@ Sonde de santé : `GET http://localhost:4000/api/health`.
 
 Les listes et les lectures directes appliquent les mêmes filtres. Une ressource hors périmètre est présentée comme introuvable afin de ne pas divulguer son existence. Les réponses destinées aux médecins excluent les données bancaires, professionnelles et de remboursement.
 
+## Protection des données sensibles
+
+- Les numéros de compte, diagnostics, motifs, actes, suites et consignes d'ordonnance sont chiffrés en AES-256-GCM avant écriture en base.
+- Les détails médicaux du journal d'audit sont chiffrés ; mots de passe, jetons, cookies et contacts y sont systématiquement masqués.
+- En production, le serveur refuse de démarrer avec des secrets faibles, connus ou réutilisés, ainsi qu'avec une origine CORS non HTTPS.
+- Après import d'une ancienne base, exécuter `npm run encrypt:phi` pour protéger les données héritées. La commande est idempotente.
+
+`JWT_SECRET` et `ENCRYPTION_KEY` doivent être deux valeurs aléatoires distinctes d'au moins 32 caractères. Conserver `ENCRYPTION_KEY` dans le gestionnaire de secrets du déploiement : sa perte rend les données chiffrées illisibles.
+
 ## Architecture (en couches — BNF4)
 
 ```

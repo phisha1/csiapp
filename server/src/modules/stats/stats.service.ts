@@ -1,8 +1,8 @@
 import { EtatFeuille, Role, TypeMedecin, TypePrescription } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import type { AuthUser } from '../../lib/jwt';
-
-const personne = { include: { personne: true } } as const;
+import { decryptConsultation } from '../../lib/phi';
+import { medicalAssureSelect, medicalMedecinSelect } from '../../lib/medicalProjections';
 
 export async function getStats(user: AuthUser) {
   return user.role === Role.ASSUREUR ? assureurStats() : medecinStats(user.id);
@@ -22,7 +22,10 @@ async function assureurStats() {
       prisma.feuilleMaladie.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        include: { assure: personne, medecin: personne },
+        include: {
+          assure: { select: medicalAssureSelect },
+          medecin: { select: medicalMedecinSelect },
+        },
       }),
     ]);
   return { role: 'assureur', assures, feuillesAttente, remboursements, factures, medecins, generalistes, recentFeuilles };
@@ -41,8 +44,15 @@ async function medecinStats(userId: string) {
         where: { medecinId },
         take: 4,
         orderBy: { date: 'desc' },
-        include: { assure: personne },
+        include: { assure: { select: medicalAssureSelect } },
       }),
     ]);
-  return { role: 'medecin', consultations, feuilles, prescriptions, orientations, recentConsultations };
+  return {
+    role: 'medecin',
+    consultations,
+    feuilles,
+    prescriptions,
+    orientations,
+    recentConsultations: recentConsultations.map(decryptConsultation),
+  };
 }

@@ -64,3 +64,21 @@ export function decryptFeuille<T extends FeuillePHI>(f: T): T {
   if (f.consultation) decryptConsultation(f.consultation);
   return f;
 }
+
+type OrdonnanceLinePHI = {
+  posologie?: string | null;
+  duree?: string | null;
+  instructions?: string | null;
+};
+
+type PrescriptionPHI = { lignes?: OrdonnanceLinePHI[] };
+
+/** Déchiffre les consignes d'une ordonnance sans exposer leur stockage chiffré à l'API. */
+export function decryptPrescription<T extends PrescriptionPHI>(prescription: T): T {
+  for (const ligne of prescription.lignes ?? []) {
+    ligne.posologie = decryptPHI(ligne.posologie);
+    ligne.duree = decryptPHI(ligne.duree);
+    ligne.instructions = decryptPHI(ligne.instructions);
+  }
+  return prescription;
+}

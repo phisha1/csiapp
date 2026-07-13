@@ -10,10 +10,11 @@ import {
   feuilleAccessWhere,
   resolveMedicalActor,
 } from '../../lib/medicalAccess';
+import { medicalAssureSelect, medicalMedecinSelect } from '../../lib/medicalProjections';
 
 const feuilleInclude = {
-  assure: { include: { personne: true } },
-  medecin: { include: { personne: true, specialite: true } },
+  assure: { select: medicalAssureSelect },
+  medecin: { select: medicalMedecinSelect },
   consultation: true,
 } satisfies Prisma.FeuilleMaladieInclude;
 

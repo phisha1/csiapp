@@ -21,6 +21,7 @@ npm-debug.log*
 
 # Outils locaux (preview, config Claude Code)
 .claude/
+.gstack/
 
 # Cache Vite
 .vite/
