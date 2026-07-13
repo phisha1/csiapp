@@ -119,6 +119,8 @@ interface AppState {
   authed: boolean;
   authStage: AuthStage;
   role: Role;
+  userId: string;
+  userLogin: string;
   loginId: string;
   loginPw: string;
   loginError: string;
@@ -263,6 +265,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   authed: false,
   authStage: 'landing',
   role: 'assureur',
+  userId: '',
+  userLogin: '',
   loginId: '',
   loginPw: '',
   loginError: '',
@@ -349,13 +353,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     try {
-      const res = await api.post<{ token: string; utilisateur: { role: string } }>('/auth/login', {
+      const res = await api.post<{ token: string; utilisateur: { id: string; login: string; role: string } }>('/auth/login', {
         login: loginId,
         motDePasse: loginPw,
       });
       setToken(res.token);
-      const role: Role = res.utilisateur.role === 'ASSUREUR' ? 'assureur' : 'medecin';
-      set({ authed: true, role, screen: 'dashboard', loginError: '', loginAttempts: 0, loginLocked: false, loginPw: '' });
+      const role: Role = res.utilisateur.role === 'ADMIN'
+        ? 'admin'
+        : res.utilisateur.role === 'ASSUREUR'
+          ? 'assureur'
+          : 'medecin';
+      set({
+        authed: true,
+        role,
+        userId: res.utilisateur.id,
+        userLogin: res.utilisateur.login,
+        screen: role === 'admin' ? 'admin_users' : 'dashboard',
+        loginError: '',
+        loginAttempts: 0,
+        loginLocked: false,
+        loginPw: '',
+      });
     } catch (e) {
       if (e instanceof ApiError) {
         set({ loginError: e.message, loginLocked: e.status === 423 });
@@ -366,15 +384,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   logout: () => {
     setToken(null);
-    set({ authed: false, authStage: 'landing', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
+    set({ authed: false, authStage: 'landing', userId: '', userLogin: '', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
   },
   // Restaure la session au démarrage si un jeton valide existe.
   restoreSession: async () => {
     if (!getToken()) return;
     try {
-      const res = await api.get<{ utilisateur: { role: string } }>('/auth/me');
-      const role: Role = res.utilisateur.role === 'ASSUREUR' ? 'assureur' : 'medecin';
-      set({ authed: true, role });
+      const res = await api.get<{ utilisateur: { id: string; login: string; role: string } }>('/auth/me');
+      const role: Role = res.utilisateur.role === 'ADMIN'
+        ? 'admin'
+        : res.utilisateur.role === 'ASSUREUR'
+          ? 'assureur'
+          : 'medecin';
+      set({
+        authed: true,
+        role,
+        userId: res.utilisateur.id,
+        userLogin: res.utilisateur.login,
+        screen: role === 'admin' ? 'admin_users' : get().screen,
+      });
     } catch {
       setToken(null);
     }

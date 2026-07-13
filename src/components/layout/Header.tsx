@@ -7,7 +7,11 @@ import { useViewport } from '../../lib/useViewport';
 export function Header() {
   const { role, screen, toggleNav } = useAppStore();
   const { isMobile } = useViewport();
-  const crumbTop = role === 'assureur' ? 'CNAM · Espace Assureur' : 'CNAM · Espace Médecin';
+  const crumbTop = role === 'admin'
+    ? 'CNAM · Administration'
+    : role === 'assureur'
+      ? 'CNAM · Espace Assureur'
+      : 'CNAM · Espace Médecin';
 
   return (
     <header style={{ height: 62, flex: '0 0 62px', background: 'var(--csi-surface)', borderBottom: '1px solid var(--csi-border)', display: 'flex', alignItems: 'center', padding: isMobile ? '0 12px' : '0 24px', gap: isMobile ? 12 : 18 }}>

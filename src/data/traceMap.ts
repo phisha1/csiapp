@@ -25,6 +25,7 @@ export const traceMap: Record<string, TraceEntry> = {
 /** Titres des écrans (pour le header). */
 export const screenTitles: Record<string, string> = {
   dashboard: 'Tableau de bord',
+  admin_users: 'Gestion des comptes',
   assures: 'Assurés',
   assure_new: 'Inscrire un assuré',
   assure_medecin: 'Affecter un médecin traitant',

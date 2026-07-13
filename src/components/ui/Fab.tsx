@@ -4,8 +4,8 @@ import { useAppStore } from '../../store/useAppStore';
 
 /** Bouton flottant : retour au tableau de bord (visible hors dashboard). */
 export function Fab() {
-  const { authed, screen, go } = useAppStore();
-  if (!authed || screen === 'dashboard') return null;
+  const { authed, role, screen, go } = useAppStore();
+  if (!authed || role === 'admin' || screen === 'dashboard') return null;
   return (
     <Box
       as="button"

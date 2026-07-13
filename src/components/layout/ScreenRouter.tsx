@@ -18,13 +18,17 @@ import { PrescrireMedicament } from '../../screens/prescription/PrescrireMedicam
 import { PrescrireSpecialiste } from '../../screens/prescription/PrescrireSpecialiste';
 import { Parametres } from '../../screens/parametres/Parametres';
 import { MedecinNew } from '../../screens/medecin/MedecinNew';
+import { AdminUsers } from '../../screens/admin/AdminUsers';
 
 export function ScreenRouter() {
   const { screen, role } = useAppStore();
 
   switch (screen) {
     case 'dashboard':
+      if (role === 'admin') return <AdminUsers />;
       return role === 'assureur' ? <AssureurDashboard /> : <MedecinDashboard />;
+    case 'admin_users':
+      return <AdminUsers />;
     case 'assures':
       return <AssuresList />;
     case 'medecins':
