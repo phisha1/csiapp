@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 
-const ROUNDS = 10;
+// 12 tours (≈ 4× plus coûteux que 10) : standard actuel pour de la donnée sensible.
+// Imperceptible à la connexion, mais ralentit d'autant une attaque hors-ligne sur les hashs.
+const ROUNDS = 12;
 
 /**
  * Génère un mot de passe temporaire aléatoire respectant la politique

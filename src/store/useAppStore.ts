@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, ApiError, clearLegacyBrowserToken } from '../lib/api';
+import { api, ApiError, clearLegacyBrowserToken, setUnauthorizedHandler } from '../lib/api';
 import type {
   Assure,
   AuthStage,
@@ -597,3 +597,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   setUmlTab: (t) => set({ umlTab: t }),
   setStateMachineSel: (sel) => set({ stateMachineSel: sel }),
 }));
+
+// Session expirée/révoquée détectée par le client API → déconnexion propre.
+// On ne réagit que si l'on se croyait connecté (évite tout faux positif).
+setUnauthorizedHandler(() => {
+  const s = useAppStore.getState();
+  if (!s.authed) return;
+  useAppStore.setState({
+    authed: false,
+    sessionChecked: true,
+    authStage: 'landing',
+    userId: '',
+    userLogin: '',
+    mustChangePassword: false,
+    temporaryPasswordExpiresAt: null,
+    screen: 'dashboard',
+    navOpen: false,
+  });
+  s.showToast('Session expirée — veuillez vous reconnecter.');
+});

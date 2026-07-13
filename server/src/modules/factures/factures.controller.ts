@@ -9,7 +9,7 @@ export async function listFacturesHandler(req: Request, res: Response) {
 }
 
 export async function getFactureHandler(req: Request, res: Response) {
-  res.json(await service.getFacture(req.params.id as string));
+  res.json(await service.getFacture(req.params.id as string, req.user!.id));
 }
 
 export async function getFacturePdfHandler(req: Request, res: Response) {

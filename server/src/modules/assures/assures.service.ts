@@ -168,7 +168,17 @@ export async function listAssures(
 
 export async function getAssure(id: string, user: AuthUser) {
   const actor = await resolveMedicalActor(user);
-  if (actor.kind === 'assureur') return getAssureInternal(id);
+  if (actor.kind === 'assureur') {
+    const assure = await getAssureInternal(id);
+    // L'assureur voit le dossier complet (données bancaires incluses) → on trace l'accès.
+    await recordAudit({
+      utilisateurId: user.id,
+      action: 'DOSSIER_ASSURE_CONSULTE',
+      entite: 'Assure',
+      entiteId: id,
+    });
+    return assure;
+  }
 
   const assure = await prisma.assure.findFirst({
     where: { AND: [{ id }, patientDirectoryWhere(actor.medecinId, actor.type)] },
