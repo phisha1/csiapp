@@ -1,5 +1,4 @@
 import { Box } from '../ui/Box';
-import { Icon } from '../ui/Icon';
 import { screenTitles } from '../../data/traceMap';
 import { useAppStore } from '../../store/useAppStore';
 import { useViewport } from '../../lib/useViewport';
@@ -32,16 +31,6 @@ export function Header() {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 11, color: 'var(--csi-muted)', letterSpacing: '.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{crumbTop}</div>
         <div style={{ fontSize: isMobile ? 15 : 17, fontWeight: 600, color: 'var(--csi-text)', fontFamily: "'IBM Plex Serif', serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{screenTitles[screen] || ''}</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ position: 'relative' }}>
-          <Box as="button" title="Notifications" sx="width:38px;height:38px;border-radius:9px;border:1px solid var(--csi-border);background:var(--csi-surface);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" hover="background:var(--csi-surface-2);">
-            <Icon name="bell" size={17} stroke="#44515f" />
-          </Box>
-          <span style={{ position: 'absolute', top: -3, right: -3, background: '#e07b1f', color: '#fff', fontSize: 10, fontWeight: 700, minWidth: 17, height: 17, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
-            3
-          </span>
-        </div>
       </div>
     </header>
   );
