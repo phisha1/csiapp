@@ -1,7 +1,9 @@
-import { StatutCompte } from '@prisma/client';
+import { Prisma, Role, StatutCompte } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
+import { generateTemporaryPassword, hashPassword } from '../../lib/password';
+import type { CreateAssureurInput } from './admin.schemas';
 
 // Champs exposés d'un utilisateur (jamais le hash du mot de passe).
 const publicSelect = {
@@ -17,6 +19,41 @@ const publicSelect = {
 /** Liste tous les comptes (administration des utilisateurs). */
 export function listUtilisateurs() {
   return prisma.utilisateur.findMany({ select: publicSelect, orderBy: { createdAt: 'asc' } });
+}
+
+/**
+ * Provisionne un compte assureur depuis l'espace d'administration.
+ * Le mot de passe temporaire n'est renvoyé qu'une fois et doit être remplacé
+ * lors de la première connexion.
+ */
+export async function creerAssureur(input: CreateAssureurInput, adminId: string) {
+  const motDePasseTemporaire = generateTemporaryPassword();
+
+  try {
+    const utilisateur = await prisma.utilisateur.create({
+      data: {
+        login: input.login.toLowerCase(),
+        motDePasseHash: await hashPassword(motDePasseTemporaire),
+        role: Role.ASSUREUR,
+        doitChangerMotDePasse: true,
+      },
+      select: publicSelect,
+    });
+
+    await recordAudit({
+      utilisateurId: adminId,
+      action: 'COMPTE_ASSUREUR_CREE',
+      entite: 'Utilisateur',
+      entiteId: utilisateur.id,
+    });
+
+    return { utilisateur, motDePasseTemporaire };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new AppError(409, 'Cet identifiant est déjà utilisé.');
+    }
+    throw error;
+  }
 }
 
 /** Réactive un compte bloqué ou suspendu : statut ACTIF + compteur d'échecs remis à zéro. */
@@ -47,4 +84,29 @@ export async function suspendre(id: string, adminId: string) {
   });
   await recordAudit({ utilisateurId: adminId, action: 'COMPTE_SUSPENDU', entite: 'Utilisateur', entiteId: id });
   return updated;
+}
+
+/**
+ * Réinitialise le mot de passe d'un utilisateur (« mot de passe oublié »).
+ * Génère un mot de passe temporaire (renvoyé UNE fois), réactive le compte,
+ * invalide les sessions et force le changement à la prochaine connexion.
+ */
+export async function reinitialiserMotDePasse(id: string, adminId: string) {
+  const user = await prisma.utilisateur.findUnique({ where: { id } });
+  if (!user) throw new AppError(404, 'Utilisateur introuvable.');
+
+  const motDePasseTemporaire = generateTemporaryPassword();
+  await prisma.utilisateur.update({
+    where: { id },
+    data: {
+      motDePasseHash: await hashPassword(motDePasseTemporaire),
+      doitChangerMotDePasse: true, // devra le changer dès la première connexion
+      statut: StatutCompte.ACTIF, // un compte oublié était souvent bloqué
+      nbEchecs: 0,
+      jetonsInvalidesAvant: new Date(), // coupe toute session existante
+    },
+  });
+  await recordAudit({ utilisateurId: adminId, action: 'MOT_DE_PASSE_REINITIALISE', entite: 'Utilisateur', entiteId: id });
+  // Le mot de passe temporaire n'est renvoyé qu'ici, jamais stocké en clair.
+  return { message: 'Mot de passe réinitialisé.', motDePasseTemporaire };
 }

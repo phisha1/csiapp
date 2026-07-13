@@ -33,8 +33,6 @@ services:
       # URL(s) du front Vercel autorisées (séparées par des virgules si plusieurs).
       - key: CORS_ORIGIN
         sync: false
-      - key: AGENT_REGISTRATION_CODE
-        value: CNAM-AGENT-2024
       - key: JWT_EXPIRES_IN
         value: 2h
       - key: MAX_LOGIN_ATTEMPTS

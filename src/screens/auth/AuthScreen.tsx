@@ -4,15 +4,11 @@ import { Icon } from '../../components/ui/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import { useViewport } from '../../lib/useViewport';
 
-const labelStyle: CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--csi-text)', marginBottom: 6 };
-const inputObj: CSSProperties = { width: '100%', padding: '11px 12px', border: '1.5px solid var(--csi-border)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', background: 'var(--csi-surface)', color: 'var(--csi-text)' };
 const loginInput: CSSProperties = { width: '100%', padding: '12px 14px', border: '1.5px solid var(--csi-border)', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', outline: 'none', background: 'var(--csi-surface)', color: 'var(--csi-text)' };
 
 export function AuthScreen() {
   const s = useAppStore();
   const { isMobile } = useViewport();
-  const isLogin = s.authView === 'login';
-  const isInscr = s.authView === 'inscription';
   const isDark = s.theme === 'sombre';
 
   return (
@@ -81,9 +77,8 @@ export function AuthScreen() {
               <Box as="button" onClick={s.openLogin} sx="width:100%;padding:14px;background:var(--csi-primary);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;" hover="background:var(--csi-primary-hover);transform:translateY(-1px);">
                 Connexion →
               </Box>
-              <div style={{ marginTop: 18, fontSize: 13, color: 'var(--csi-text-2)' }}>
-                Vous êtes un nouvel agent ?{' '}
-                <button onClick={s.openInscription} style={{ background: 'none', border: 'none', color: 'var(--csi-primary)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Créer un compte agent</button>
+              <div style={{ marginTop: 18, fontSize: 13, color: 'var(--csi-text-2)', lineHeight: 1.6 }}>
+                Les comptes agents sont créés par un administrateur habilité.
               </div>
             </div>
           )}
@@ -95,9 +90,7 @@ export function AuthScreen() {
                 ← Retour à l'accueil
               </Box>
 
-              {/* CONNEXION */}
-              {isLogin && (
-                <div>
+              <div>
                   <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 24, margin: '0 0 6px', color: 'var(--csi-text)' }}>Accès à la plateforme</h2>
                   <p style={{ fontSize: 14, color: 'var(--csi-text-2)', margin: '0 0 24px' }}>Identifiez-vous — votre espace (assureur ou médecin) s'ouvre selon votre compte.</p>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--csi-text)', marginBottom: 7 }}>Identifiant</label>
@@ -120,64 +113,9 @@ export function AuthScreen() {
                     {s.loginLocked ? 'Compte bloqué' : 'Se connecter →'}
                   </Box>
                   <div style={{ marginTop: 16, fontSize: 12, color: 'var(--csi-muted)', textAlign: 'center', lineHeight: 1.6 }}>
-                    Démo · Assureur: <b>assureur</b> / <b>cnam2024</b>
-                    <br />Médecin: <b>medecin</b> / <b>cnam2024</b>
+                    Compte indisponible ? Contactez votre administrateur.
                   </div>
-                </div>
-              )}
-
-              {/* INSCRIPTION (agent / assureur) */}
-              {isInscr && (
-                <div>
-                  {s.inscrDone ? (
-                    <div style={{ textAlign: 'center', padding: '20px 0', animation: 'csiPop .4s ease' }}>
-                      <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#e6f4ec', color: '#1f8a4c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, margin: '0 auto 18px' }}>✓</div>
-                      <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 23, margin: '0 0 8px', color: 'var(--csi-text)' }}>Compte créé</h2>
-                      <p style={{ fontSize: 14, color: 'var(--csi-text-2)', margin: '0 0 24px', lineHeight: 1.6 }}>Votre demande d'inscription en tant qu'<b>agent (assureur)</b> a été enregistrée. Vous pouvez vous connecter.</p>
-                      <button onClick={s.goLoginAfter} style={{ padding: '12px 28px', background: 'var(--csi-primary)', color: '#fff', border: 'none', borderRadius: 9, fontSize: 14, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Continuer vers la connexion</button>
-                    </div>
-                  ) : (
-                    <div>
-                      <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 24, margin: '0 0 6px', color: 'var(--csi-text)' }}>Créer un compte agent</h2>
-                      <p style={{ fontSize: 14, color: 'var(--csi-text-2)', margin: '0 0 18px' }}>Inscription réservée aux agents de sécurité sociale (assureurs).</p>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--csi-surface-2)', border: '1px solid var(--csi-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
-                        <span style={{ display: 'inline-flex', flex: '0 0 auto', marginTop: 1 }}><Icon name="info" size={17} stroke="#2c4a86" /></span>
-                        <span style={{ fontSize: 12.5, color: 'var(--csi-text-2)', lineHeight: 1.5 }}>Les médecins ne s'inscrivent pas eux-mêmes : ils sont enregistrés par un assureur depuis son espace (module <b style={{ color: 'var(--csi-text)' }}>Médecins</b>).</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-                        <div><label style={labelStyle}>Nom</label><input placeholder="Mbarga" style={inputObj} /></div>
-                        <div><label style={labelStyle}>Prénom</label><input placeholder="Jean" style={inputObj} /></div>
-                      </div>
-                      <div style={{ marginBottom: 14 }}><label style={labelStyle}>Matricule agent</label><input placeholder="AG-2024-..." style={inputObj} /></div>
-                      <div style={{ marginBottom: 14 }}><label style={labelStyle}>Adresse e-mail</label><input placeholder="jean.mbarga@cnam.cm" style={inputObj} /></div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
-                        <div><label style={labelStyle}>Mot de passe</label><input type="password" placeholder="••••••" style={inputObj} /></div>
-                        <div><label style={labelStyle}>Confirmer</label><input type="password" placeholder="••••••" style={inputObj} /></div>
-                      </div>
-
-                      {/* Code de confirmation fourni par l'entreprise — obligatoire */}
-                      <div style={{ background: 'var(--csi-surface-2)', border: '1px solid var(--csi-border)', borderRadius: 10, padding: 14, marginBottom: 18 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: 'var(--csi-text)', marginBottom: 6 }}>
-                          <Icon name="shield" size={15} stroke="#7d2433" /> Code de confirmation de l'entreprise *
-                        </label>
-                        <p style={{ fontSize: 12, color: 'var(--csi-text-2)', margin: '0 0 10px', lineHeight: 1.5 }}>Code envoyé par l'entreprise d'assurance pour confirmer que vous êtes bien un agent habilité.</p>
-                        <input
-                          value={s.inscrCode}
-                          onChange={(e) => s.setInscrCode(e.target.value)}
-                          placeholder="CNAM-AGENT-…"
-                          style={{ ...inputObj, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '.02em', border: `1.5px solid ${s.inscrCodeError ? '#cc3b3b' : 'var(--csi-border)'}`, background: s.inscrCodeError ? '#fdf6f6' : 'var(--csi-surface)' }}
-                        />
-                        {s.inscrCodeError && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#cc3b3b', marginTop: 7 }}><span>⚠</span>{s.inscrCodeError}</div>
-                        )}
-                        <div style={{ fontSize: 11, color: 'var(--csi-muted)', marginTop: 8 }}>Démo · code valide : <b>CNAM-AGENT-2024</b></div>
-                      </div>
-
-                      <Box as="button" onClick={s.doInscr} sx="width:100%;padding:13px;background:#7d2433;color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;" hover="background:#93283a;">Créer le compte</Box>
-                    </div>
-                  )}
-                </div>
-              )}
+              </div>
             </div>
           )}
         </div>

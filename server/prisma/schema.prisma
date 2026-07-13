@@ -81,6 +81,11 @@ model Utilisateur {
   statut            StatutCompte   @default(ACTIF)
   nbEchecs          Int            @default(0) // BNF1 : verrouillage après MAX_LOGIN_ATTEMPTS
   derniereConnexion DateTime?
+  // Tout jeton émis avant cette date est refusé (invalidation de TOUTES les sessions
+  // sur changement/réinitialisation de mot de passe — OWASP ASVS).
+  jetonsInvalidesAvant DateTime?
+  // Vrai après une réinitialisation admin : l'utilisateur doit choisir un nouveau mot de passe.
+  doitChangerMotDePasse Boolean    @default(false)
   medecin           Medecin?
   audits            JournalAudit[]
   createdAt         DateTime       @default(now())

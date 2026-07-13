@@ -1,16 +1,22 @@
-import { Role, StatutCompte, type Utilisateur } from '@prisma/client';
+import { StatutCompte, type Utilisateur } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
 import { AppError } from '../../middlewares/errors';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { signToken, type AuthUser } from '../../lib/jwt';
 import { recordAudit } from '../../lib/audit';
-import type { LoginInput, RegisterInput } from './auth.schemas';
+import type { ChangePasswordInput, LoginInput } from './auth.schemas';
 
 const compteBloqueMsg = `Compte bloqué après ${env.MAX_LOGIN_ATTEMPTS} tentatives échouées. Contactez l'administrateur pour le débloquer.`;
 
 function toPublic(u: Utilisateur) {
-  return { id: u.id, login: u.login, role: u.role, statut: u.statut };
+  return {
+    id: u.id,
+    login: u.login,
+    role: u.role,
+    statut: u.statut,
+    doitChangerMotDePasse: u.doitChangerMotDePasse,
+  };
 }
 
 function session(u: Utilisateur) {
@@ -58,22 +64,23 @@ export async function login(input: LoginInput) {
   return session(updated);
 }
 
-/** Inscription d'un agent assureur, conditionnée par le code d'habilitation. */
-export async function register(input: RegisterInput) {
-  if (input.codeHabilitation.trim().toUpperCase() !== env.AGENT_REGISTRATION_CODE.toUpperCase()) {
-    throw new AppError(403, "Code d'habilitation invalide. Demandez-le à l'entreprise d'assurance.");
-  }
-  const existant = await prisma.utilisateur.findUnique({ where: { login: input.login } });
-  if (existant) {
-    throw new AppError(409, 'Cet identifiant est déjà utilisé.');
-  }
-  const user = await prisma.utilisateur.create({
+/** Changement de mot de passe par l'utilisateur connecté (invalide toutes ses sessions). */
+export async function changePassword(userId: string, input: ChangePasswordInput) {
+  const user = await prisma.utilisateur.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError(404, 'Compte introuvable.');
+
+  const actuelOk = await verifyPassword(input.motDePasseActuel, user.motDePasseHash);
+  if (!actuelOk) throw new AppError(401, 'Mot de passe actuel incorrect.');
+
+  await prisma.utilisateur.update({
+    where: { id: userId },
     data: {
-      login: input.login,
-      motDePasseHash: await hashPassword(input.motDePasse),
-      role: Role.ASSUREUR,
+      motDePasseHash: await hashPassword(input.nouveauMotDePasse),
+      doitChangerMotDePasse: false,
+      // Invalide toutes les sessions existantes, y compris celle en cours (OWASP ASVS).
+      jetonsInvalidesAvant: new Date(),
     },
   });
-  await recordAudit({ utilisateurId: user.id, action: 'INSCRIPTION_AGENT' });
-  return session(user);
+  await recordAudit({ utilisateurId: userId, action: 'MOT_DE_PASSE_CHANGE' });
+  return { message: 'Mot de passe modifié. Veuillez vous reconnecter.' };
 }
