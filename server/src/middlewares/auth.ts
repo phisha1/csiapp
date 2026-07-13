@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { Role } from '@prisma/client';
+import { Role, StatutCompte } from '@prisma/client';
+import { prisma } from '../config/prisma';
 import { verifyToken, type VerifiedToken } from '../lib/jwt';
 import { isRevoked } from '../lib/tokenDenylist';
 import { AppError } from './errors';
 
-/** Exige un jeton JWT valide et non révoqué ; attache l'utilisateur à `req.user`. */
+/** Exige un jeton JWT valide, non révoqué, et un compte toujours actif. */
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -16,9 +17,19 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   } catch {
     throw new AppError(401, 'Jeton invalide ou expiré.');
   }
-  // Signature valide ne suffit pas : le jeton a-t-il été révoqué (logout, suspension) ?
+  // Signature valide ne suffit pas : le jeton a-t-il été révoqué (logout) ?
   if (await isRevoked(verified.jti)) {
     throw new AppError(401, 'Session terminée — veuillez vous reconnecter.');
+  }
+  // Le compte est-il toujours actif ? Une suspension/blocage prend ainsi effet
+  // immédiatement, sans attendre l'expiration du jeton (coût : une lecture par requête).
+  const compte = await prisma.utilisateur.findUnique({
+    where: { id: verified.id },
+    select: { statut: true },
+  });
+  if (!compte) throw new AppError(401, 'Compte introuvable.');
+  if (compte.statut !== StatutCompte.ACTIF) {
+    throw new AppError(403, 'Compte non actif — accès suspendu. Contactez un administrateur.');
   }
   req.user = verified;
   next();

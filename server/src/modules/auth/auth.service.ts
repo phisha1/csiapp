@@ -27,6 +27,9 @@ export async function login(input: LoginInput) {
   if (user.statut === StatutCompte.BLOQUE) {
     throw new AppError(423, compteBloqueMsg);
   }
+  if (user.statut === StatutCompte.SUSPENDU) {
+    throw new AppError(423, 'Compte suspendu par un administrateur. Contactez-le pour le réactiver.');
+  }
 
   const motDePasseOk = await verifyPassword(input.motDePasse, user.motDePasseHash);
   if (!motDePasseOk) {

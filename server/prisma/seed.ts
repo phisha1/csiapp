@@ -17,6 +17,13 @@ async function main() {
     create: { libelle: 'Pédiatrie' },
   });
 
+  // Compte administrateur (gestion des utilisateurs, déblocage de comptes)
+  await prisma.utilisateur.upsert({
+    where: { login: 'admin' },
+    update: {},
+    create: { login: 'admin', motDePasseHash: await hash('admin2024'), role: Role.ADMIN },
+  });
+
   // Compte assureur (agent CNAM)
   await prisma.utilisateur.upsert({
     where: { login: 'assureur' },
@@ -73,7 +80,9 @@ async function main() {
     await prisma.medicamentCatalogue.upsert({ where: { code: m.code }, update: {}, create: m });
   }
 
-  console.log('✅ Seed terminé — comptes : assureur / medecin / specialiste (mot de passe : cnam2024).');
+  console.log(
+    '✅ Seed terminé — comptes : admin (admin2024), assureur / medecin / specialiste (cnam2024).',
+  );
 }
 
 main()

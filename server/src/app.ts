@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { errorHandler, notFound } from './middlewares/errors';
 import authRoutes from './modules/auth/auth.routes';
+import adminRoutes from './modules/admin/admin.routes';
 import medecinsRoutes from './modules/medecins/medecins.routes';
 import assuresRoutes from './modules/assures/assures.routes';
 import feuillesRoutes from './modules/feuilles/feuilles.routes';
@@ -49,6 +50,7 @@ export function createApp() {
 
   // --- Routes métier ---
   app.use('/api/auth', authRoutes);
+  app.use('/api/admin', adminRoutes);
   app.use('/api/medecins', medecinsRoutes);
   app.use('/api/assures', assuresRoutes);
   app.use('/api/feuilles', feuillesRoutes);

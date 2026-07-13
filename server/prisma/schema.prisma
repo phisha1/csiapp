@@ -14,6 +14,7 @@ datasource db {
 // ----------------------------- Énumérations -----------------------------
 
 enum Role {
+  ADMIN
   ASSUREUR
   GENERALISTE
   SPECIALISTE
@@ -21,7 +22,8 @@ enum Role {
 
 enum StatutCompte {
   ACTIF
-  BLOQUE
+  BLOQUE // verrouillage automatique après trop d'échecs de connexion
+  SUSPENDU // suspension décidée par un administrateur
 }
 
 enum Sexe {
