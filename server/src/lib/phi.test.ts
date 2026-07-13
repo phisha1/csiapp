@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { encryptPHI, decryptPHI, isEncrypted, decryptFeuille } from './phi';
+import {
+  encryptPHI,
+  decryptPHI,
+  isEncrypted,
+  decryptFeuille,
+  decryptPrescription,
+} from './phi';
 
 describe('phi (chiffrement des données de santé au repos)', () => {
   // CAS NOMINAL — un diagnostic chiffré doit se relire à l'identique.
@@ -44,5 +50,22 @@ describe('phi (chiffrement des données de santé au repos)', () => {
     expect(clair.diagnostic).toBe('Grippe');
     expect(clair.consultation.motif).toBe('Fièvre');
     expect(clair.consultation.diagnostic).toBe('Grippe');
+  });
+
+  it('déchiffre toutes les consignes sensibles d’une ordonnance', () => {
+    const prescription = {
+      lignes: [{
+        posologie: encryptPHI('1 comprimé matin et soir') as string,
+        duree: encryptPHI('7 jours') as string,
+        instructions: encryptPHI('Après le repas') as string,
+      }],
+    };
+
+    const clair = decryptPrescription(prescription);
+    expect(clair.lignes[0]).toEqual({
+      posologie: '1 comprimé matin et soir',
+      duree: '7 jours',
+      instructions: 'Après le repas',
+    });
   });
 });

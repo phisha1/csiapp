@@ -3,11 +3,22 @@ import { prisma } from '../../config/prisma';
 import { decryptConsultation } from '../../lib/phi';
 import type { AuthUser } from '../../lib/jwt';
 import { consultationAccessWhere, resolveMedicalActor } from '../../lib/medicalAccess';
+import { medicalAssureSelect, medicalMedecinSelect } from '../../lib/medicalProjections';
 
-const include = {
-  assure: { include: { personne: true } },
-  medecin: { include: { personne: true } },
-} satisfies Prisma.ConsultationInclude;
+const select = {
+  id: true,
+  assureId: true,
+  medecinId: true,
+  date: true,
+  motif: true,
+  type: true,
+  diagnostic: true,
+  actes: true,
+  suite: true,
+  createdAt: true,
+  assure: { select: medicalAssureSelect },
+  medecin: { select: medicalMedecinSelect },
+} satisfies Prisma.ConsultationSelect;
 
 export async function listConsultations(params: { q?: string; skip: number; take: number }, user: AuthUser) {
   const filters: Prisma.ConsultationWhereInput[] = [];
@@ -26,7 +37,7 @@ export async function listConsultations(params: { q?: string; skip: number; take
   const where: Prisma.ConsultationWhereInput = filters.length ? { AND: filters } : {};
   const [total, items] = await prisma.$transaction([
     prisma.consultation.count({ where }),
-    prisma.consultation.findMany({ where, skip: params.skip, take: params.take, orderBy: { date: 'desc' }, include }),
+    prisma.consultation.findMany({ where, skip: params.skip, take: params.take, orderBy: { date: 'desc' }, select }),
   ]);
   return { total, items: items.map(decryptConsultation) };
 }

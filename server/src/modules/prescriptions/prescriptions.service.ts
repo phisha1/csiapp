@@ -5,13 +5,15 @@ import { recordAudit } from '../../lib/audit';
 import type { AuthUser } from '../../lib/jwt';
 import type { OrientationInput, PrescrireMedicamentsInput } from './prescriptions.schemas';
 import { prescriptionAccessWhere, resolveMedicalActor } from '../../lib/medicalAccess';
+import { decryptPrescription, encryptPHI } from '../../lib/phi';
+import { medicalAssureSelect, medicalMedecinSelect } from '../../lib/medicalProjections';
 
 const prescInclude = {
-  feuille: true,
+  feuille: { select: { id: true, code: true, date: true, etat: true } },
   specialite: true,
-  assure: { include: { personne: true } },
-  medecin: { include: { personne: true } },
-  medecinSpecialiste: { include: { personne: true, specialite: true } },
+  assure: { select: medicalAssureSelect },
+  medecin: { select: medicalMedecinSelect },
+  medecinSpecialiste: { select: medicalMedecinSelect },
   lignes: { include: { medicament: true } },
 } satisfies Prisma.PrescriptionInclude;
 
@@ -57,15 +59,15 @@ export async function prescrireMedicaments(input: PrescrireMedicamentsInput, use
       data: input.lignes.map((l) => ({
         prescriptionId: presc.id,
         medicamentId: l.medicamentId,
-        posologie: l.posologie,
-        duree: l.duree,
-        instructions: l.instructions,
+        posologie: encryptPHI(l.posologie),
+        duree: encryptPHI(l.duree),
+        instructions: encryptPHI(l.instructions),
       })),
     });
     return tx.prescription.findUniqueOrThrow({ where: { id: presc.id }, include: prescInclude });
   });
   await recordAudit({ utilisateurId: userId, action: 'PRESCRIPTION_MEDICAMENTS', entite: 'Prescription', entiteId: prescription.id });
-  return prescription;
+  return decryptPrescription(prescription);
 }
 
 /** Orienter vers un spécialiste (BF9) : spécialité + médecin spécialiste + niveau d'urgence. */
@@ -94,7 +96,7 @@ export async function orienter(input: OrientationInput, userId: string) {
     include: prescInclude,
   });
   await recordAudit({ utilisateurId: userId, action: 'PRESCRIPTION_ORIENTATION', entite: 'Prescription', entiteId: prescription.id });
-  return prescription;
+  return decryptPrescription(prescription);
 }
 
 export async function listPrescriptions(
@@ -113,7 +115,7 @@ export async function listPrescriptions(
     prisma.prescription.count({ where }),
     prisma.prescription.findMany({ where, skip, take, orderBy: { createdAt: 'desc' }, include: prescInclude }),
   ]);
-  return { total, items };
+  return { total, items: items.map(decryptPrescription) };
 }
 
 export async function getPrescription(id: string, user: AuthUser) {
@@ -131,5 +133,5 @@ export async function getPrescription(id: string, user: AuthUser) {
     entite: 'Prescription',
     entiteId: id,
   });
-  return prescription;
+  return decryptPrescription(prescription);
 }

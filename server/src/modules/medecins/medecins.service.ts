@@ -5,8 +5,7 @@ import { hashPassword } from '../../lib/password';
 import { recordAudit } from '../../lib/audit';
 import type { CreateMedecinInput, UpdateMedecinInput } from './medecins.schemas';
 import { temporaryPasswordExpiresAt } from '../../lib/temporaryPassword';
-
-const withRelations = { personne: true, specialite: true } as const;
+import { medicalMedecinSelect } from '../../lib/medicalProjections';
 
 async function resolveSpecialiteId(libelle?: string): Promise<string | null> {
   if (!libelle || !libelle.trim()) return null;
@@ -61,7 +60,7 @@ export async function createMedecin(input: CreateMedecinInput, actorId: string) 
         specialiteId,
         etablissement: input.etablissement,
       },
-      include: withRelations,
+      select: medicalMedecinSelect,
     });
   });
 
@@ -84,13 +83,19 @@ export async function listMedecins(params: { q?: string; skip: number; take: num
     : {};
   const [total, items] = await prisma.$transaction([
     prisma.medecin.count({ where }),
-    prisma.medecin.findMany({ where, skip, take, orderBy: { createdAt: 'desc' }, include: withRelations }),
+    prisma.medecin.findMany({
+      where,
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+      select: medicalMedecinSelect,
+    }),
   ]);
   return { total, items };
 }
 
 export async function getMedecin(id: string) {
-  const medecin = await prisma.medecin.findUnique({ where: { id }, include: withRelations });
+  const medecin = await prisma.medecin.findUnique({ where: { id }, select: medicalMedecinSelect });
   if (!medecin) throw new AppError(404, 'Médecin introuvable.');
   return medecin;
 }
@@ -108,7 +113,7 @@ export async function updateMedecin(id: string, input: UpdateMedecinInput, actor
     const specialiteId = await resolveSpecialiteId(input.specialite);
     data.specialite = specialiteId ? { connect: { id: specialiteId } } : { disconnect: true };
   }
-  const updated = await prisma.medecin.update({ where: { id }, data, include: withRelations });
+  const updated = await prisma.medecin.update({ where: { id }, data, select: medicalMedecinSelect });
   await recordAudit({ utilisateurId: actorId, action: 'MEDECIN_MODIFIE', entite: 'Medecin', entiteId: id });
   return updated;
 }

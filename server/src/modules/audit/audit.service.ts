@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma';
+import { restoreAuditDetails } from '../../lib/audit';
 
 interface ListAuditParams {
   action?: string;
@@ -30,5 +31,11 @@ export async function listAudit(params: ListAuditParams) {
       include: { utilisateur: { select: { login: true, role: true } } },
     }),
   ]);
-  return { total, items };
+  return {
+    total,
+    items: items.map((item) => ({
+      ...item,
+      details: restoreAuditDetails(item.details),
+    })),
+  };
 }
