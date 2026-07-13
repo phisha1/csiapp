@@ -15,6 +15,8 @@ La couverture à 100 % reste l’objectif. Les tests permettent de modifier rapi
 ```bash
 npm test
 npm run test:watch
+npm run test:e2e
+npm run test:e2e:headed
 npm run typecheck
 ```
 
@@ -23,7 +25,14 @@ npm run typecheck
 - Tests unitaires : fonctions de formatage, validation et règles métier, fichiers `*.test.ts` proches du code testé.
 - Tests de composants : interactions visibles, formulaires et états d’erreur, fichiers `*.test.tsx`.
 - Tests d’intégration : échanges entre le store, les composants et un client API simulé.
-- Tests navigateur : parcours complets dans les moteurs Chromium, Firefox et WebKit, ajoutés dans l’étape E2E.
+- Tests navigateur : parcours dans Chromium, Firefox et WebKit, avec profils bureau et mobile, sous `e2e/`.
+- Accessibilité : scans axe automatisés sur les règles WCAG A et AA détectables par un outil.
+
+Avant le premier lancement local des tests navigateur :
+
+```bash
+npx playwright install chromium firefox webkit
+```
 
 ## Conventions
 
