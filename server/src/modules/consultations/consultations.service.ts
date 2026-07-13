@@ -1,5 +1,6 @@
 import { Prisma, Role } from '@prisma/client';
 import { prisma } from '../../config/prisma';
+import { decryptConsultation } from '../../lib/phi';
 import type { AuthUser } from '../../lib/jwt';
 
 const include = {
@@ -16,8 +17,7 @@ export async function listConsultations(params: { q?: string; skip: number; take
   if (params.q) {
     filters.push({
       OR: [
-        { motif: { contains: params.q, mode: 'insensitive' } },
-        { diagnostic: { contains: params.q, mode: 'insensitive' } },
+        // motif/diagnostic chiffrés au repos → non recherchables (choix conformité).
         { assure: { personne: { nom: { contains: params.q, mode: 'insensitive' } } } },
       ],
     });
@@ -27,5 +27,5 @@ export async function listConsultations(params: { q?: string; skip: number; take
     prisma.consultation.count({ where }),
     prisma.consultation.findMany({ where, skip: params.skip, take: params.take, orderBy: { date: 'desc' }, include }),
   ]);
-  return { total, items };
+  return { total, items: items.map(decryptConsultation) };
 }

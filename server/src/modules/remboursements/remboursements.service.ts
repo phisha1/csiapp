@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
 import { decrypt } from '../../lib/crypto';
+import { decryptFeuille } from '../../lib/phi';
 import { executeVirement } from '../../lib/bank';
 import type { EffectuerRemboursementInput } from './remboursements.schemas';
 
@@ -92,6 +93,7 @@ export async function effectuerRemboursement(input: EffectuerRemboursementInput,
 export async function getRemboursement(id: string) {
   const remboursement = await prisma.remboursement.findUnique({ where: { id }, include: rembInclude });
   if (!remboursement) throw new AppError(404, 'Remboursement introuvable.');
+  decryptFeuille(remboursement.feuille);
   return remboursement;
 }
 
@@ -110,5 +112,6 @@ export async function listRemboursements(params: { q?: string; skip: number; tak
     prisma.remboursement.count({ where }),
     prisma.remboursement.findMany({ where, skip, take, orderBy: { createdAt: 'desc' }, include: rembInclude }),
   ]);
+  items.forEach((r) => decryptFeuille(r.feuille));
   return { total, items };
 }
