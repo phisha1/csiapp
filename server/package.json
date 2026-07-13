@@ -2,6 +2,9 @@
   "name": "csi-cnam-server",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "description": "API CSI-CNAM — Node.js/Express + Prisma/PostgreSQL (projet tutoré ENSPY, Groupe 4)",
   "scripts": {
     "dev": "tsx watch src/server.ts",

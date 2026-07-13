@@ -1,0 +1,6 @@
+# Les modifications sensibles requièrent une revue du propriétaire du dépôt.
+/.github/ @phisha1
+/package.json @phisha1
+/package-lock.json @phisha1
+/server/package.json @phisha1
+/server/package-lock.json @phisha1
