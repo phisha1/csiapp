@@ -41,10 +41,15 @@ export async function listFactures(params: { q?: string; skip: number; take: num
   return { total, items };
 }
 
-export async function getFacture(id: string): Promise<FactureDetail> {
+export async function getFacture(id: string, actorId?: string): Promise<FactureDetail> {
   const facture = await prisma.facture.findUnique({ where: { id }, include: factureInclude });
   if (!facture) throw new AppError(404, 'Facture introuvable.');
   decryptFeuille(facture.feuille);
+  // Audité pour une lecture directe (données de remboursement) ; pas lors de la
+  // génération PDF, qui journalise déjà sa propre action FACTURE_IMPRIMEE.
+  if (actorId) {
+    await recordAudit({ utilisateurId: actorId, action: 'FACTURE_CONSULTEE', entite: 'Facture', entiteId: id });
+  }
   return facture;
 }
 

@@ -10,6 +10,14 @@ export function clearLegacyBrowserToken(): void {
   }
 }
 
+// Gestionnaire global de session expirée : appelé sur un 401 d'une route protégée
+// (pas les routes /auth/*, dont les 401 sont « normaux » : login raté, /me au démarrage).
+type UnauthorizedHandler = () => void;
+let onUnauthorized: UnauthorizedHandler | null = null;
+export function setUnauthorizedHandler(fn: UnauthorizedHandler | null): void {
+  onUnauthorized = fn;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -31,6 +39,8 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
+    // Session expirée/révoquée sur une route protégée → déconnexion propre.
+    if (res.status === 401 && !path.startsWith('/auth/')) onUnauthorized?.();
     throw new ApiError(res.status, (data && data.message) || `Erreur ${res.status}`, data);
   }
   return data as T;
