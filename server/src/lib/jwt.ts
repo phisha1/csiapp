@@ -10,9 +10,10 @@ export interface AuthUser {
   login: string;
 }
 
-/** Identité + métadonnées techniques du jeton vérifié (jti pour la révocation, exp). */
+/** Identité + métadonnées techniques du jeton vérifié (jti pour la révocation, iat, exp). */
 export interface VerifiedToken extends AuthUser {
   jti: string; // identifiant unique du jeton (clé de la liste de révocation)
+  iat: number; // date d'émission (secondes epoch) — comparée à jetonsInvalidesAvant
   exp: number; // date d'expiration (secondes epoch)
 }
 
@@ -32,6 +33,7 @@ export function verifyToken(token: string): VerifiedToken {
     role: payload.role as Role,
     login: payload.login as string,
     jti: String(payload.jti),
+    iat: Number(payload.iat),
     exp: Number(payload.exp),
   };
 }

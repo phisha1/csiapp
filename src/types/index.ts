@@ -1,5 +1,4 @@
 export type Role = 'assureur' | 'medecin';
-export type AuthView = 'login' | 'inscription';
 export type AuthStage = 'landing' | 'form';
 export type Theme = 'clair' | 'sombre';
 export type RembMode = 'especes' | 'virement' | null;

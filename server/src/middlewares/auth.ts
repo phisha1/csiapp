@@ -25,11 +25,20 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   // immédiatement, sans attendre l'expiration du jeton (coût : une lecture par requête).
   const compte = await prisma.utilisateur.findUnique({
     where: { id: verified.id },
-    select: { statut: true },
+    select: { statut: true, jetonsInvalidesAvant: true },
   });
   if (!compte) throw new AppError(401, 'Compte introuvable.');
   if (compte.statut !== StatutCompte.ACTIF) {
     throw new AppError(403, 'Compte non actif — accès suspendu. Contactez un administrateur.');
+  }
+  // Jeton émis avant une invalidation globale (changement/réinitialisation de mot de passe) ?
+  // iat est en secondes (tronqué) : on compare donc en secondes entières, sinon un jeton
+  // émis dans la même seconde que l'invalidation serait rejeté à tort.
+  if (
+    compte.jetonsInvalidesAvant &&
+    verified.iat < Math.floor(compte.jetonsInvalidesAvant.getTime() / 1000)
+  ) {
+    throw new AppError(401, 'Session expirée après changement de mot de passe — reconnectez-vous.');
   }
   req.user = verified;
   next();

@@ -3,7 +3,6 @@ import { api, ApiError, getToken, setToken } from '../lib/api';
 import type {
   Assure,
   AuthStage,
-  AuthView,
   BankState,
   DetailEntity,
   Facture,
@@ -120,10 +119,6 @@ interface AppState {
   authed: boolean;
   authStage: AuthStage;
   role: Role;
-  authView: AuthView;
-  inscrDone: boolean;
-  inscrCode: string;
-  inscrCodeError: string;
   loginId: string;
   loginPw: string;
   loginError: string;
@@ -190,15 +185,10 @@ interface AppState {
 
   // auth
   openLogin: () => void;
-  openInscription: () => void;
   backToLanding: () => void;
-  setAuthView: (vw: AuthView) => void;
   setLoginId: (val: string) => void;
   setLoginPw: (val: string) => void;
   doLogin: () => void;
-  setInscrCode: (val: string) => void;
-  doInscr: () => void;
-  goLoginAfter: () => void;
   logout: () => void;
   restoreSession: () => Promise<void>;
 
@@ -273,10 +263,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   authed: false,
   authStage: 'landing',
   role: 'assureur',
-  authView: 'login',
-  inscrDone: false,
-  inscrCode: '',
-  inscrCodeError: '',
   loginId: '',
   loginPw: '',
   loginError: '',
@@ -347,10 +333,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // ---- auth ----
-  openLogin: () => set({ authStage: 'form', authView: 'login', loginId: '', loginPw: '', loginError: '', inscrDone: false, inscrCode: '', inscrCodeError: '', loginAttempts: 0, loginLocked: false }),
-  openInscription: () => set({ authStage: 'form', authView: 'inscription', loginError: '', inscrDone: false, inscrCode: '', inscrCodeError: '' }),
-  backToLanding: () => set({ authStage: 'landing', loginError: '', inscrDone: false, inscrCode: '', inscrCodeError: '', loginAttempts: 0, loginLocked: false }),
-  setAuthView: (vw) => set(vw === 'login' ? { authView: 'login', inscrDone: false, loginError: '' } : { authView: 'inscription', inscrDone: false, inscrCode: '', inscrCodeError: '' }),
+  openLogin: () => set({ authStage: 'form', loginId: '', loginPw: '', loginError: '', loginAttempts: 0, loginLocked: false }),
+  backToLanding: () => set({ authStage: 'landing', loginError: '', loginAttempts: 0, loginLocked: false }),
   setLoginId: (val) => set({ loginId: val, loginError: '' }),
   setLoginPw: (val) => set({ loginPw: val, loginError: '' }),
   // Authentification réelle contre l'API (JWT). Le rôle est déduit du compte.
@@ -380,24 +364,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
   },
-  setInscrCode: (val) => set({ inscrCode: val, inscrCodeError: '' }),
-  doInscr: () => {
-    // Code de confirmation fourni par l'entreprise d'assurance — prouve qu'il s'agit d'un agent habilité.
-    const code = get().inscrCode.trim().toUpperCase();
-    if (!code) {
-      set({ inscrCodeError: "Le code de confirmation de l'entreprise est obligatoire." });
-      return;
-    }
-    if (code !== 'CNAM-AGENT-2024') {
-      set({ inscrCodeError: "Code de confirmation invalide. Demandez-le à l'entreprise d'assurance." });
-      return;
-    }
-    set({ inscrDone: true, inscrCodeError: '' });
-  },
-  goLoginAfter: () => set({ authView: 'login', inscrDone: false, inscrCode: '', inscrCodeError: '' }),
   logout: () => {
     setToken(null);
-    set({ authed: false, authStage: 'landing', authView: 'login', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
+    set({ authed: false, authStage: 'landing', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
   },
   // Restaure la session au démarrage si un jeton valide existe.
   restoreSession: async () => {
