@@ -43,23 +43,43 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: '**/business-flow.spec.ts',
       use: { ...devices['Desktop Chrome'] },
     },
     {
       name: 'firefox',
+      testIgnore: '**/business-flow.spec.ts',
       use: { ...devices['Desktop Firefox'] },
     },
     {
       name: 'webkit',
+      testIgnore: '**/business-flow.spec.ts',
       use: { ...devices['Desktop Safari'] },
     },
     {
       name: 'mobile-chromium',
+      testIgnore: '**/business-flow.spec.ts',
       use: { ...devices['Pixel 7'] },
     },
     {
       name: 'mobile-webkit',
+      testIgnore: '**/business-flow.spec.ts',
       use: { ...devices['iPhone 13'] },
+    },
+    {
+      name: 'business-setup',
+      testMatch: '**/business.setup.ts',
+      teardown: 'business-teardown',
+    },
+    {
+      name: 'business-teardown',
+      testMatch: '**/business.teardown.ts',
+    },
+    {
+      name: 'business-chromium',
+      testMatch: '**/business-flow.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['business-setup'],
     },
   ],
 });
