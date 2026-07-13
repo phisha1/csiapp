@@ -10,12 +10,12 @@ export async function createAssureHandler(req: Request, res: Response) {
 
 export async function listAssuresHandler(req: Request, res: Response) {
   const { skip, take, page, limit } = getPagination(req);
-  const { total, items } = await service.listAssures({ q: getSearch(req), skip, take });
+  const { total, items } = await service.listAssures({ q: getSearch(req), skip, take }, req.user!);
   res.json({ total, page, limit, items });
 }
 
 export async function getAssureHandler(req: Request, res: Response) {
-  res.json(await service.getAssure(req.params.id as string));
+  res.json(await service.getAssure(req.params.id as string, req.user!));
 }
 
 export async function updateAssureHandler(req: Request, res: Response) {

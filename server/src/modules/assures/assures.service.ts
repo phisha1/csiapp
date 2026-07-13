@@ -4,6 +4,8 @@ import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
 import { encrypt, maskAccount } from '../../lib/crypto';
 import type { CreateAssureInput, UpdateAssureInput } from './assures.schemas';
+import type { AuthUser } from '../../lib/jwt';
+import { patientDirectoryWhere, resolveMedicalActor } from '../../lib/medicalAccess';
 
 /** Masque le numéro de compte chiffré avant de renvoyer l'assuré (BNF1). */
 function serializeAssure<T extends { coordBancaire?: { numeroCompte: string } | null }>(a: T): T {
@@ -25,6 +27,31 @@ const detailInclude = {
   traitant: { include: { personne: true } },
   traitantHist: { orderBy: { dateDebut: 'desc' as const }, include: { medecin: { include: { personne: true } } } },
 } satisfies Prisma.AssureInclude;
+
+// Vue minimale pour un médecin : aucune donnée bancaire, professionnelle ou de remboursement.
+const doctorAssureSelect = {
+  id: true,
+  matricule: true,
+  statut: true,
+  personne: {
+    select: {
+      nom: true,
+      prenom: true,
+      sexe: true,
+      dateNaissance: true,
+      telephone: true,
+      email: true,
+      medecin: { select: { id: true } },
+    },
+  },
+  traitant: { select: { personne: { select: { nom: true, prenom: true } } } },
+} satisfies Prisma.AssureSelect;
+
+async function getAssureInternal(id: string) {
+  const assure = await prisma.assure.findUnique({ where: { id }, include: detailInclude });
+  if (!assure) throw new AppError(404, 'Assuré introuvable.');
+  return serializeAssure(assure);
+}
 
 /** Inscrit un assuré (BF3). `medecinId` permet de lier à un médecin existant (dualité). */
 export async function createAssure(input: CreateAssureInput, actorId: string) {
@@ -86,9 +113,12 @@ export async function createAssure(input: CreateAssureInput, actorId: string) {
   return serializeAssure(assure);
 }
 
-export async function listAssures(params: { q?: string; skip: number; take: number }) {
+export async function listAssures(
+  params: { q?: string; skip: number; take: number },
+  user: AuthUser,
+) {
   const { q, skip, take } = params;
-  const where: Prisma.AssureWhereInput = q
+  const searchWhere: Prisma.AssureWhereInput | undefined = q
     ? {
         OR: [
           { matricule: { contains: q, mode: 'insensitive' } },
@@ -97,7 +127,28 @@ export async function listAssures(params: { q?: string; skip: number; take: numb
           { personne: { prenom: { contains: q, mode: 'insensitive' } } },
         ],
       }
-    : {};
+    : undefined;
+  const actor = await resolveMedicalActor(user);
+  const accessWhere = actor.kind === 'medecin'
+    ? patientDirectoryWhere(actor.medecinId, actor.type)
+    : undefined;
+  const filters = [accessWhere, searchWhere].filter((value): value is Prisma.AssureWhereInput => !!value);
+  const where: Prisma.AssureWhereInput = filters.length ? { AND: filters } : {};
+
+  if (actor.kind === 'medecin') {
+    const [total, items] = await prisma.$transaction([
+      prisma.assure.count({ where }),
+      prisma.assure.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        select: doctorAssureSelect,
+      }),
+    ]);
+    return { total, items };
+  }
+
   const [total, items] = await prisma.$transaction([
     prisma.assure.count({ where }),
     prisma.assure.findMany({
@@ -111,10 +162,22 @@ export async function listAssures(params: { q?: string; skip: number; take: numb
   return { total, items };
 }
 
-export async function getAssure(id: string) {
-  const assure = await prisma.assure.findUnique({ where: { id }, include: detailInclude });
-  if (!assure) throw new AppError(404, 'Assuré introuvable.');
-  return serializeAssure(assure);
+export async function getAssure(id: string, user: AuthUser) {
+  const actor = await resolveMedicalActor(user);
+  if (actor.kind === 'assureur') return getAssureInternal(id);
+
+  const assure = await prisma.assure.findFirst({
+    where: { AND: [{ id }, patientDirectoryWhere(actor.medecinId, actor.type)] },
+    select: doctorAssureSelect,
+  });
+  if (!assure) throw new AppError(404, 'Assuré introuvable ou non accessible.');
+  await recordAudit({
+    utilisateurId: user.id,
+    action: 'DOSSIER_ASSURE_CONSULTE',
+    entite: 'Assure',
+    entiteId: id,
+  });
+  return assure;
 }
 
 export async function updateAssure(id: string, input: UpdateAssureInput, actorId: string) {
@@ -163,5 +226,5 @@ export async function setTraitant(assureId: string, medecinId: string, actorId: 
     entiteId: assureId,
     details: { medecinId },
   });
-  return getAssure(assureId);
+  return getAssureInternal(assureId);
 }

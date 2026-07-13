@@ -1,9 +1,10 @@
-import { Prisma, Role, TypeMedecin, TypePrescription } from '@prisma/client';
+import { Prisma, TypeMedecin, TypePrescription } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
 import type { AuthUser } from '../../lib/jwt';
 import type { OrientationInput, PrescrireMedicamentsInput } from './prescriptions.schemas';
+import { prescriptionAccessWhere, resolveMedicalActor } from '../../lib/medicalAccess';
 
 const prescInclude = {
   feuille: true,
@@ -102,9 +103,9 @@ export async function listPrescriptions(
 ) {
   const { feuilleId, skip, take } = params;
   const filters: Prisma.PrescriptionWhereInput[] = [];
-  if (user.role !== Role.ASSUREUR) {
-    const medecin = await prisma.medecin.findUnique({ where: { utilisateurId: user.id } });
-    filters.push({ medecinId: medecin?.id ?? '00000000-0000-0000-0000-000000000000' });
+  const actor = await resolveMedicalActor(user);
+  if (actor.kind === 'medecin') {
+    filters.push(prescriptionAccessWhere(actor.medecinId, actor.type));
   }
   if (feuilleId) filters.push({ feuilleId });
   const where: Prisma.PrescriptionWhereInput = filters.length ? { AND: filters } : {};
@@ -115,8 +116,20 @@ export async function listPrescriptions(
   return { total, items };
 }
 
-export async function getPrescription(id: string) {
-  const prescription = await prisma.prescription.findUnique({ where: { id }, include: prescInclude });
-  if (!prescription) throw new AppError(404, 'Prescription introuvable.');
+export async function getPrescription(id: string, user: AuthUser) {
+  const actor = await resolveMedicalActor(user);
+  const prescription = actor.kind === 'assureur'
+    ? await prisma.prescription.findUnique({ where: { id }, include: prescInclude })
+    : await prisma.prescription.findFirst({
+        where: { AND: [{ id }, prescriptionAccessWhere(actor.medecinId, actor.type)] },
+        include: prescInclude,
+      });
+  if (!prescription) throw new AppError(404, 'Prescription introuvable ou non accessible.');
+  await recordAudit({
+    utilisateurId: user.id,
+    action: 'PRESCRIPTION_CONSULTEE',
+    entite: 'Prescription',
+    entiteId: id,
+  });
   return prescription;
 }

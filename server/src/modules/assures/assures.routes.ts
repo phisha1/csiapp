@@ -12,9 +12,9 @@ import {
 const router = Router();
 router.use(requireAuth);
 
-// Lecture : tout utilisateur authentifié (un médecin sélectionne un patient — BF7).
-router.get('/', listAssuresHandler);
-router.get('/:id', getAssureHandler);
+// Lecture : assureur ou médecin ayant une relation de soins avec le patient.
+router.get('/', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), listAssuresHandler);
+router.get('/:id', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), getAssureHandler);
 
 // Écriture : réservée à l'assureur (BF3, BF4).
 router.post('/', requireRole(Role.ASSUREUR), createAssureHandler);

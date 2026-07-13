@@ -11,8 +11,8 @@ import {
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', listPrescriptionsHandler);
-router.get('/:id', getPrescriptionHandler);
+router.get('/', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), listPrescriptionsHandler);
+router.get('/:id', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), getPrescriptionHandler);
 
 // Prescriptions : réservées aux médecins (BF8, BF9).
 router.post('/medicaments', requireRole(Role.GENERALISTE, Role.SPECIALISTE), prescrireMedicamentsHandler);

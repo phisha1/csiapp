@@ -21,5 +21,5 @@ export async function listPrescriptionsHandler(req: Request, res: Response) {
 }
 
 export async function getPrescriptionHandler(req: Request, res: Response) {
-  res.json(await service.getPrescription(req.params.id as string));
+  res.json(await service.getPrescription(req.params.id as string, req.user!));
 }
