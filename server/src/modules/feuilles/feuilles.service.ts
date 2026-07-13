@@ -2,6 +2,7 @@ import { EtatFeuille, Prisma, Role, TypeMedecin } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
+import { encryptPHI, decryptFeuille } from '../../lib/phi';
 import type { AuthUser } from '../../lib/jwt';
 import type { CompleterInput, CreateFeuilleInput } from './feuilles.schemas';
 
@@ -42,10 +43,10 @@ export async function createFeuille(input: CreateFeuilleInput, userId: string) {
         assureId: assure.id,
         medecinId: medecin.id,
         date: input.dateConsult,
-        motif: input.motif,
+        motif: encryptPHI(input.motif),
         type: medecin.type,
-        diagnostic: input.diagnostic,
-        actes: input.actes,
+        diagnostic: encryptPHI(input.diagnostic),
+        actes: encryptPHI(input.actes),
       },
     });
     const code = await genCode(tx);
@@ -56,7 +57,7 @@ export async function createFeuille(input: CreateFeuilleInput, userId: string) {
         medecinId: medecin.id,
         consultationId: consultation.id,
         date: input.dateConsult,
-        diagnostic: input.diagnostic,
+        diagnostic: encryptPHI(input.diagnostic),
         montant: input.montant,
         etat: EtatFeuille.TRANSMISE,
       },
@@ -64,7 +65,7 @@ export async function createFeuille(input: CreateFeuilleInput, userId: string) {
     });
   });
   await recordAudit({ utilisateurId: userId, action: 'FEUILLE_TRANSMISE', entite: 'FeuilleMaladie', entiteId: feuille.id });
-  return feuille;
+  return decryptFeuille(feuille);
 }
 
 export async function listFeuilles(params: { q?: string; skip: number; take: number }, user: AuthUser) {
@@ -79,7 +80,8 @@ export async function listFeuilles(params: { q?: string; skip: number; take: num
     filters.push({
       OR: [
         { code: { contains: q, mode: 'insensitive' } },
-        { diagnostic: { contains: q, mode: 'insensitive' } },
+        // NB : diagnostic chiffré au repos → non recherchable (choix conformité).
+        // La recherche reste possible par code, matricule et nom d'assuré.
         { assure: { matricule: { contains: q, mode: 'insensitive' } } },
         { assure: { personne: { nom: { contains: q, mode: 'insensitive' } } } },
       ],
@@ -90,13 +92,13 @@ export async function listFeuilles(params: { q?: string; skip: number; take: num
     prisma.feuilleMaladie.count({ where }),
     prisma.feuilleMaladie.findMany({ where, skip, take, orderBy: { createdAt: 'desc' }, include: feuilleInclude }),
   ]);
-  return { total, items };
+  return { total, items: items.map(decryptFeuille) };
 }
 
 export async function getFeuille(id: string) {
   const feuille = await prisma.feuilleMaladie.findUnique({ where: { id }, include: feuilleInclude });
   if (!feuille) throw new AppError(404, 'Feuille introuvable.');
-  return feuille;
+  return decryptFeuille(feuille);
 }
 
 async function changeEtat(id: string, to: EtatFeuille, actorId: string, action: string, details?: unknown) {
@@ -107,7 +109,7 @@ async function changeEtat(id: string, to: EtatFeuille, actorId: string, action: 
   }
   const updated = await prisma.feuilleMaladie.update({ where: { id }, data: { etat: to }, include: feuilleInclude });
   await recordAudit({ utilisateurId: actorId, action, entite: 'FeuilleMaladie', entiteId: id, details });
-  return updated;
+  return decryptFeuille(updated);
 }
 
 export const ouvrir = (id: string, actorId: string) =>
@@ -127,9 +129,9 @@ export async function completer(id: string, input: CompleterInput, actorId: stri
   const taux = feuille.medecin.type === TypeMedecin.SPECIALISTE ? 80 : 100;
   const updated = await prisma.feuilleMaladie.update({
     where: { id },
-    data: { diagnostic: input.diagnostic, montant: input.montant, etat: EtatFeuille.VALIDEE, taux },
+    data: { diagnostic: encryptPHI(input.diagnostic), montant: input.montant, etat: EtatFeuille.VALIDEE, taux },
     include: feuilleInclude,
   });
   await recordAudit({ utilisateurId: actorId, action: 'FEUILLE_VALIDEE', entite: 'FeuilleMaladie', entiteId: id, details: { taux } });
-  return updated;
+  return decryptFeuille(updated);
 }
