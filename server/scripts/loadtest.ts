@@ -3,25 +3,33 @@
  * de lecture les plus courants, et mesure débit + latences (objectif < 3 s).
  *
  * Lancer le serveur puis : `npx tsx scripts/loadtest.ts`  (ou `npm run loadtest`)
- * Variables : LOADTEST_URL, LOADTEST_USERS, LOADTEST_REQ.
+ * Variables : LOADTEST_URL, LOADTEST_USERS, LOADTEST_REQ,
+ * LOADTEST_LOGIN et LOADTEST_PASSWORD.
  */
 const BASE = process.env.LOADTEST_URL ?? 'http://localhost:4000/api';
 const USERS = Number(process.env.LOADTEST_USERS ?? 50);
 const REQ_PER_USER = Number(process.env.LOADTEST_REQ ?? 20);
+const LOGIN = process.env.LOADTEST_LOGIN;
+const PASSWORD = process.env.LOADTEST_PASSWORD;
 
 async function login(): Promise<string> {
+  if (!LOGIN || !PASSWORD) {
+    throw new Error('LOADTEST_LOGIN et LOADTEST_PASSWORD sont obligatoires.');
+  }
   const res = await fetch(`${BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login: 'assureur', motDePasse: 'cnam2024' }),
+    body: JSON.stringify({ login: LOGIN, motDePasse: PASSWORD }),
   });
   if (!res.ok) throw new Error(`Login impossible (${res.status}) — le serveur est-il démarré ?`);
-  return (await res.json()).token as string;
+  const cookie = res.headers.getSetCookie()[0]?.split(';', 1)[0];
+  if (!cookie) throw new Error('Le cookie de session HttpOnly est absent de la réponse de connexion.');
+  return cookie;
 }
 
 async function main() {
-  const token = await login();
-  const headers = { Authorization: `Bearer ${token}` };
+  const cookie = await login();
+  const headers = { Cookie: cookie };
   const endpoints = ['/stats', '/assures?limit=20', '/medecins?limit=20', '/feuilles?limit=20', '/remboursements', '/factures'];
 
   const latencies: number[] = [];

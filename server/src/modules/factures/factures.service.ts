@@ -1,13 +1,10 @@
-import fs from 'fs';
-import path from 'path';
 import PDFDocument from 'pdfkit';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
 import { decryptFeuille } from '../../lib/phi';
-
-const FACTURES_DIR = path.join(process.cwd(), 'factures');
+import { decryptBlob, documentSha256, encryptBlob } from '../../lib/encryptedBlob';
 
 const factureInclude = {
   assure: { include: { personne: true } },
@@ -51,16 +48,41 @@ export async function getFacture(id: string): Promise<FactureDetail> {
   return facture;
 }
 
-/** Génère le PDF de la facture (BF12), l'archive sur disque et le renvoie. */
+/**
+ * Renvoie l'archive immuable si elle existe, sinon génère le PDF puis le stocke
+ * chiffré dans PostgreSQL. L'archive survit ainsi aux redéploiements du serveur.
+ */
 export async function genererPdf(id: string, actorId: string) {
   const facture = await getFacture(id);
-  const buffer = await buildPdf(facture);
-  fs.mkdirSync(FACTURES_DIR, { recursive: true });
-  const filePath = path.join(FACTURES_DIR, `${facture.reference}.pdf`);
-  fs.writeFileSync(filePath, buffer);
-  if (!facture.cheminPdf) {
-    await prisma.facture.update({ where: { id }, data: { cheminPdf: filePath } });
+  const archive = await prisma.factureDocument.findUnique({ where: { factureId: id } });
+  let buffer: Buffer;
+
+  if (archive) {
+    try {
+      buffer = decryptBlob(archive.contenuChiffre);
+    } catch {
+      throw new AppError(500, 'L’archive PDF est illisible. Une intervention administrateur est requise.');
+    }
+    if (documentSha256(buffer) !== archive.sha256) {
+      throw new AppError(500, 'L’intégrité de l’archive PDF ne peut pas être confirmée.');
+    }
+  } else {
+    const generated = await buildPdf(facture);
+    const persisted = await prisma.factureDocument.upsert({
+      where: { factureId: id },
+      update: {},
+      create: {
+        factureId: id,
+        contenuChiffre: Uint8Array.from(encryptBlob(generated)),
+        sha256: documentSha256(generated),
+      },
+    });
+    buffer = decryptBlob(persisted.contenuChiffre);
+    if (documentSha256(buffer) !== persisted.sha256) {
+      throw new AppError(500, 'L’intégrité de l’archive PDF ne peut pas être confirmée.');
+    }
   }
+
   await recordAudit({ utilisateurId: actorId, action: 'FACTURE_IMPRIMEE', entite: 'Facture', entiteId: id });
   return { buffer, filename: `${facture.reference}.pdf` };
 }

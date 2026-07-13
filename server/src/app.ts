@@ -17,9 +17,18 @@ import auditRoutes from './modules/audit/audit.routes';
 import consultationsRoutes from './modules/consultations/consultations.routes';
 import statsRoutes from './modules/stats/stats.routes';
 import { createCsrfProtection } from './middlewares/csrf';
+import { requestContext } from './middlewares/observability';
+import { prisma } from './config/prisma';
 
-export function createApp() {
+type AppOptions = {
+  readinessCheck?: () => Promise<void>;
+};
+
+export function createApp(options: AppOptions = {}) {
   const app = express();
+  const readinessCheck = options.readinessCheck ?? (async () => {
+    await prisma.$queryRaw`SELECT 1`;
+  });
 
   // Derrière le proxy de l'hébergeur (Render) en production : nécessaire pour
   // que req.ip / rate-limit fonctionnent correctement.
@@ -30,8 +39,9 @@ export function createApp() {
 
   // Sécurité HTTP de base (BNF1)
   app.use(helmet());
+  app.use(requestContext);
   app.use(cors({ origin: allowedOrigins, credentials: true }));
-  app.use(express.json());
+  app.use(express.json({ limit: '1mb' }));
   app.use(createCsrfProtection(allowedOrigins));
 
   // Limitation de débit globale (atténue le brute-force — BNF1)
@@ -47,7 +57,22 @@ export function createApp() {
 
   // Sonde de santé
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'csi-cnam-api', time: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      service: 'csi-cnam-api',
+      release: env.RELEASE_SHA,
+      time: new Date().toISOString(),
+    });
+  });
+
+  // Sonde de disponibilité : le trafic ne doit arriver que si PostgreSQL répond.
+  app.get('/api/ready', async (_req, res) => {
+    try {
+      await readinessCheck();
+      res.json({ status: 'ready', service: 'csi-cnam-api', release: env.RELEASE_SHA });
+    } catch {
+      res.status(503).json({ status: 'unavailable', service: 'csi-cnam-api', release: env.RELEASE_SHA });
+    }
   });
 
   // --- Routes métier ---

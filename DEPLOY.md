@@ -1,68 +1,115 @@
-# Déploiement — Option A (front Vercel + backend & base sur Render)
+# Déploiement de production
 
-Architecture : **React (Vercel)** → appelle l'**API Express (Render)** → **PostgreSQL (Render)**.
+Architecture retenue : **React sur Vercel → API Express sur Render → PostgreSQL géré sur Render**.
 
-> Ordre important : Render **d'abord** (pour obtenir l'URL de l'API), puis Vercel,
-> puis revenir régler le CORS sur Render.
+La configuration de production n’utilise aucun disque local pour les documents : les PDF de facture sont chiffrés puis archivés dans PostgreSQL. Ils suivent donc les sauvegardes de la base et survivent aux redéploiements.
 
----
+## 1. Préparer Render
 
-## 1. Backend + base de données → Render
+1. Créer le Blueprint depuis `render.yaml`.
+2. Vérifier que le service web utilise au minimum le plan `starter` et PostgreSQL le plan `basic-256mb`. Les offres gratuites restent réservées aux démonstrations.
+3. Renseigner dans le gestionnaire de secrets Render :
+   - `JWT_SECRET` : valeur aléatoire d’au moins 32 caractères ;
+   - `ENCRYPTION_KEY` : autre valeur aléatoire d’au moins 32 caractères ;
+   - `CORS_ORIGIN` : URL HTTPS exacte du frontend ;
+   - `RELEASE_SHA` : identifiant du commit ou du tag déployé.
+4. Conserver `ENCRYPTION_KEY` dans un coffre de secrets séparé. Sa perte rend les données médicales, bancaires et les PDF archivés illisibles.
+5. Déployer. Render exécute `npm ci`, compile, applique les migrations avec `prisma migrate deploy`, puis contrôle `/api/ready`.
 
-1. Le code est déjà sur GitHub (`phisha1/csiapp`).
-2. Render → **New → Blueprint** → sélectionner le dépôt. Render lit `render.yaml`
-   et crée **deux ressources** : la base `csi-cnam-db` et le service web `csi-cnam-api`.
-3. Renseigner les **secrets** du service `csi-cnam-api` (onglet *Environment*) :
-   - `JWT_SECRET` : une longue chaîne aléatoire.
-   - `ENCRYPTION_KEY` : ≥ 16 caractères. ⚠️ **À fixer une fois pour toutes** — si elle
-     change, les coordonnées bancaires déjà chiffrées deviennent illisibles.
-   - `CORS_ORIGIN` : laisser vide pour l'instant (réglé à l'étape 3).
-   - (`DATABASE_URL` est injectée automatiquement depuis la base.)
-4. Déployer. Le build exécute `prisma generate`, compile, puis
-   `prisma migrate deploy` (crée les 14 tables). Vérifier la **sonde** :
-   `https://csi-cnam-api.onrender.com/api/health` → `{"status":"ok"}`.
-5. **Comptes de démo** (base vide au départ) : onglet *Shell* du service →
-   `npx tsx prisma/seed.ts` → crée `assureur` / `medecin` / `specialiste` (mdp `cnam2024`).
-6. Noter l'URL de l'API, ex. `https://csi-cnam-api.onrender.com`.
+Les sondes ont deux rôles distincts :
 
-## 2. Frontend → Vercel
+- `/api/health` confirme que le processus Node répond ;
+- `/api/ready` confirme aussi que PostgreSQL répond et peut recevoir du trafic.
 
-1. Vercel → **New Project** → importer le dépôt. *Root Directory* = racine du dépôt ;
-   framework **Vite** détecté automatiquement (`vercel.json` est déjà fourni).
-2. Variable d'environnement :
-   - `VITE_API_URL` = `https://csi-cnam-api.onrender.com/api` (l'URL Render + `/api`).
-3. Déployer → noter l'URL du front, ex. `https://csiapp.vercel.app`.
+## 2. Initialiser les données
 
-## 3. Relier les deux (CORS)
+Le seed normal ne crée plus de comptes :
 
-1. Render → service `csi-cnam-api` → *Environment* → `CORS_ORIGIN` =
-   `https://csiapp.vercel.app` (plusieurs URLs possibles, séparées par des virgules —
-   utile pour les déploiements *preview* Vercel).
-2. Redéployer le backend (ou *Manual Deploy → Clear cache*). C'est prêt.
+```bash
+cd server
+npm run seed
+```
 
-### Session navigateur
+Il ajoute uniquement les spécialités et le catalogue de médicaments.
 
-- L'authentification utilise un cookie `HttpOnly`, `Secure` et `SameSite=None` en
-  production. Le JWT n'est jamais accessible au JavaScript du frontend.
-- `CORS_ORIGIN` doit contenir uniquement les URL exactes et fiables du frontend :
-  cette liste sert également à la protection CSRF des opérations d'écriture.
-- Le frontend et l'API doivent impérativement être servis en HTTPS. Pour une offre
-  commerciale, utiliser idéalement deux sous-domaines du même domaine contrôlé
-  (`app.exemple.cm` et `api.exemple.cm`) afin d'éviter le blocage des cookies tiers.
+Pour créer le premier administrateur, définir temporairement `ADMIN_LOGIN` et `ADMIN_INITIAL_PASSWORD` dans l’environnement du service, exécuter puis supprimer immédiatement ces deux variables :
 
----
+```bash
+npm run bootstrap:admin
+```
 
-## Points à connaître
+Le mot de passe initial doit avoir au moins 12 caractères, avec majuscule, minuscule et chiffre. Il expire et doit être changé à la première connexion. Le bootstrap refuse de créer un deuxième administrateur.
 
-- **Free tier Render** : le service s'endort après inactivité → premier appel lent
-  (~50 s, « cold start »). La base PostgreSQL gratuite a une durée de vie limitée ;
-  pour la durabilité, utiliser **Neon** (retirer le bloc `databases:` de `render.yaml`
-  et fournir `DATABASE_URL` à la main).
-- **Sauvegardes (BNF3)** : en production, s'appuyer sur les **sauvegardes automatiques**
-  du fournisseur de base (Render/Neon). Le script `npm run backup` (pg_dump) est prévu
-  pour le **local** uniquement.
-- **PDF de facture** : le système de fichiers Render est éphémère → les PDF archivés sont
-  régénérés à la demande (l'archivage ne survit pas à un redéploiement). Comportement
-  acceptable pour une démo.
-- **HTTPS** : fourni automatiquement par Vercel et Render (BNF1).
-- **Variables backend** : voir `server/.env.example` pour la liste complète.
+`npm run seed:demo` est exclusivement local. Il est bloqué lorsque `NODE_ENV=production` et génère des mots de passe aléatoires à usage unique.
+
+## 3. Déployer le frontend Vercel
+
+1. Importer le dépôt dans Vercel, à la racine.
+2. Définir obligatoirement `VITE_API_URL`, par exemple `https://api.exemple.cm/api`.
+3. Déployer puis reporter l’URL HTTPS exacte du frontend dans `CORS_ORIGIN` sur Render.
+
+Un build de production échoue volontairement si `VITE_API_URL` manque, n’utilise pas HTTPS ou ne se termine pas par `/api`. Cela évite de livrer un frontend qui appelle `localhost`.
+
+Pour une offre commerciale, utiliser de préférence deux sous-domaines du même domaine, par exemple `app.exemple.cm` et `api.exemple.cm`.
+
+## 4. Sauvegardes et restauration
+
+La protection principale est la sauvegarde gérée de PostgreSQL. Activer la rétention et la restauration à un instant donné proposées par l’offre choisie. Une sauvegarde qui n’a jamais été restaurée n’est pas une preuve de reprise.
+
+Un exercice de restauration doit être réalisé au moins une fois par mois dans une base isolée :
+
+1. restaurer la dernière sauvegarde dans une base temporaire ;
+2. appliquer les migrations si nécessaire ;
+3. vérifier les nombres de comptes, assurés, feuilles, remboursements, factures et documents PDF ;
+4. ouvrir un PDF archivé ;
+5. consigner la date, la durée et le résultat ;
+6. supprimer la base temporaire après validation.
+
+Les scripts locaux utilisent le format PostgreSQL `custom` et créent un checksum SHA-256 :
+
+```bash
+cd server
+npm run backup
+npm run backup:verify
+```
+
+Pour un exercice sur une base isolée :
+
+```bash
+RESTORE_DATABASE_URL="postgresql://.../csi_cnam_restore" \
+RESTORE_CONFIRM_DATABASE="csi_cnam_restore" \
+npm run backup:restore -- backups/csi_cnam_DATE.dump --confirm
+```
+
+Le script refuse de restaurer dans la base source et exige le nom exact de la base cible. Les dumps contiennent des données personnelles : les stocker uniquement dans un espace chiffré avec accès restreint.
+
+## 5. Supervision et incident
+
+Configurer au minimum :
+
+- une alerte lorsque `/api/ready` échoue pendant deux contrôles consécutifs ;
+- une alerte sur les réponses HTTP 5xx ;
+- la conservation des journaux selon la politique de l’organisme ;
+- une vérification quotidienne de la dernière sauvegarde réussie.
+
+Chaque réponse contient `X-Request-Id`. Les journaux JSON de l’API reprennent cet identifiant sans enregistrer le corps des requêtes, ce qui permet de retrouver une erreur sans recopier les données médicales dans les logs.
+
+En cas d’incident :
+
+1. suspendre les déploiements et noter `RELEASE_SHA` ;
+2. déterminer si l’API, PostgreSQL ou le frontend est touché ;
+3. restaurer la dernière version applicative saine si le problème vient du code ;
+4. restaurer PostgreSQL dans une base isolée avant toute bascule ;
+5. ne jamais remplacer `ENCRYPTION_KEY` pendant une restauration ;
+6. documenter l’heure, l’impact, les actions et la validation finale.
+
+## 6. Contrôle avant ouverture commerciale
+
+- CI verte sur le commit déployé.
+- `/api/health` et `/api/ready` répondent en HTTPS.
+- Première connexion administrateur et changement du mot de passe testés.
+- Aucun compte de démonstration présent.
+- Création puis réouverture d’un PDF après redéploiement validées.
+- Sauvegarde récente et exercice de restauration documenté.
+- Alertes et contacts d’astreinte définis.
+- Domaine, politique de confidentialité et durée de conservation des données validés.
