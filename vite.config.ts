@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       // strictPort : échoue clairement au lieu de dériver silencieusement (sinon CORS casse).
       port: 5175,
       strictPort: true,
-      open: true,
+      open: process.env.PLAYWRIGHT_TEST !== '1' && process.env.CI !== 'true',
     },
   };
 });
