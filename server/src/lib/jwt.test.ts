@@ -27,4 +27,13 @@ describe('jwt (jetons de session signés)', () => {
   it('rejette une valeur qui n\'est pas un jeton', () => {
     expect(() => verifyToken('n-importe-quoi')).toThrow();
   });
+
+  // RÉVOCATION — chaque jeton porte un `jti` unique. Sans unicité, révoquer un
+  // jeton reviendrait à révoquer tous les jetons partageant le même identifiant.
+  it('attribue un jti unique à chaque jeton', () => {
+    const jti1 = verifyToken(signToken(user)).jti;
+    const jti2 = verifyToken(signToken(user)).jti;
+    expect(jti1).toBeTruthy();
+    expect(jti1).not.toBe(jti2);
+  });
 });

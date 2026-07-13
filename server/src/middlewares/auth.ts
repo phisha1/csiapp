@@ -1,19 +1,26 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Role } from '@prisma/client';
-import { verifyToken } from '../lib/jwt';
+import { verifyToken, type VerifiedToken } from '../lib/jwt';
+import { isRevoked } from '../lib/tokenDenylist';
 import { AppError } from './errors';
 
-/** Exige un jeton JWT valide ; attache l'utilisateur à `req.user`. */
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+/** Exige un jeton JWT valide et non révoqué ; attache l'utilisateur à `req.user`. */
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     throw new AppError(401, 'Authentification requise.');
   }
+  let verified: VerifiedToken;
   try {
-    req.user = verifyToken(header.slice(7));
+    verified = verifyToken(header.slice(7));
   } catch {
     throw new AppError(401, 'Jeton invalide ou expiré.');
   }
+  // Signature valide ne suffit pas : le jeton a-t-il été révoqué (logout, suspension) ?
+  if (await isRevoked(verified.jti)) {
+    throw new AppError(401, 'Session terminée — veuillez vous reconnecter.');
+  }
+  req.user = verified;
   next();
 }
 

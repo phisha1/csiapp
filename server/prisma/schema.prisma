@@ -300,6 +300,16 @@ model Facture {
   @@index([assureId])
 }
 
+// Liste de révocation des jetons JWT (OWASP ASVS — logout/suspension réels).
+// Un jeton dont le `jti` figure ici est refusé, même si sa signature est valide.
+model JetonRevoque {
+  jti        String   @id // identifiant unique du jeton révoqué
+  expiration DateTime // = expiration du jeton ; sert à purger les entrées obsolètes
+  createdAt  DateTime @default(now())
+
+  @@index([expiration])
+}
+
 // Journal d'audit des actions critiques (BNF1 traçabilité, BNF7 rapports d'audit).
 model JournalAudit {
   id            String       @id @default(uuid())
