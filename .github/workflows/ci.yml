@@ -1,0 +1,47 @@
+name: CI
+
+# Quand rejouer les vérifications : à chaque push et à chaque Pull Request sur main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # --- Back-end : génération Prisma, typage, tests ---
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    # Variables factices : le code de config (src/config/env.ts) exige leur présence
+    # au démarrage. Les tests unitaires ne touchent pas la base, ces valeurs suffisent.
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://user:pass@localhost:5432/csi_cnam_test?schema=public
+      JWT_SECRET: secret-de-test-au-moins-8-caracteres
+      ENCRYPTION_KEY: cle-de-test-au-moins-16-caracteres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate # génère le client Prisma (@prisma/client)
+      - run: npm run typecheck # le TypeScript compile-t-il sans erreur ?
+      - run: npm test # la suite Vitest passe-t-elle ?
+
+  # --- Front-end : typage + build de production ---
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run build # tsc -b && vite build : échoue si le front ne compile pas
