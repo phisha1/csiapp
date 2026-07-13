@@ -14,8 +14,8 @@ import {
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', listFeuillesHandler);
-router.get('/:id', getFeuilleHandler);
+router.get('/', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), listFeuillesHandler);
+router.get('/:id', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), getFeuilleHandler);
 
 // Création par un médecin (BF7).
 router.post('/', requireRole(Role.GENERALISTE, Role.SPECIALISTE), createFeuilleHandler);

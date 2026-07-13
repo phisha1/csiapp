@@ -11,9 +11,9 @@ import {
 const router = Router();
 router.use(requireAuth);
 
-// Lecture : tout utilisateur authentifié (un médecin peut consulter l'annuaire).
-router.get('/', listMedecinsHandler);
-router.get('/:id', getMedecinHandler);
+// Lecture : annuaire professionnel uniquement, sans accès administrateur.
+router.get('/', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), listMedecinsHandler);
+router.get('/:id', requireRole(Role.ASSUREUR, Role.GENERALISTE, Role.SPECIALISTE), getMedecinHandler);
 
 // Écriture : réservée à l'assureur (BF2).
 router.post('/', requireRole(Role.ASSUREUR), createMedecinHandler);

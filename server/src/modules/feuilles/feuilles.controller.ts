@@ -15,7 +15,7 @@ export async function listFeuillesHandler(req: Request, res: Response) {
 }
 
 export async function getFeuilleHandler(req: Request, res: Response) {
-  res.json(await service.getFeuille(req.params.id as string));
+  res.json(await service.getFeuille(req.params.id as string, req.user!));
 }
 
 export async function ouvrirHandler(req: Request, res: Response) {

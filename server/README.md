@@ -32,6 +32,15 @@ npm test           # tests (vitest)
 
 Sonde de santé : `GET http://localhost:4000/api/health`.
 
+## Contrôle d'accès médical
+
+- **Assureur** : accès opérationnel aux dossiers nécessaires à la gestion des assurés et des remboursements.
+- **Médecin généraliste** : accès à ses propres actes et aux patients dont il est le médecin traitant.
+- **Médecin spécialiste** : accès à ses propres actes et aux patients qui lui ont été nominativement orientés.
+- **Administrateur** : gestion des comptes uniquement, sans accès aux dossiers médicaux ni à l'annuaire professionnel.
+
+Les listes et les lectures directes appliquent les mêmes filtres. Une ressource hors périmètre est présentée comme introuvable afin de ne pas divulguer son existence. Les réponses destinées aux médecins excluent les données bancaires, professionnelles et de remboursement.
+
 ## Architecture (en couches — BNF4)
 
 ```

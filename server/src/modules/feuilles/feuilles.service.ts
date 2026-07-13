@@ -1,10 +1,15 @@
-import { EtatFeuille, Prisma, Role, TypeMedecin } from '@prisma/client';
+import { EtatFeuille, Prisma, TypeMedecin } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
 import { encryptPHI, decryptFeuille } from '../../lib/phi';
 import type { AuthUser } from '../../lib/jwt';
 import type { CompleterInput, CreateFeuilleInput } from './feuilles.schemas';
+import {
+  canStartMedicalRecordWhere,
+  feuilleAccessWhere,
+  resolveMedicalActor,
+} from '../../lib/medicalAccess';
 
 const feuilleInclude = {
   assure: { include: { personne: true } },
@@ -32,10 +37,23 @@ async function genCode(tx: Prisma.TransactionClient): Promise<string> {
 
 /** Enregistre une feuille lors d'une consultation → état TRANSMISE (BF7). */
 export async function createFeuille(input: CreateFeuilleInput, userId: string) {
-  const medecin = await prisma.medecin.findUnique({ where: { utilisateurId: userId } });
+  const medecin = await prisma.medecin.findUnique({
+    where: { utilisateurId: userId },
+    select: { id: true, type: true },
+  });
   if (!medecin) throw new AppError(403, "Votre compte n'est pas rattaché à un médecin.");
-  const assure = await prisma.assure.findUnique({ where: { matricule: input.numAssure } });
-  if (!assure) throw new AppError(404, 'Aucun assuré ne correspond à ce matricule.');
+  const assure = await prisma.assure.findFirst({
+    where: {
+      AND: [
+        { matricule: input.numAssure },
+        canStartMedicalRecordWhere(medecin.id, medecin.type),
+      ],
+    },
+    select: { id: true },
+  });
+  if (!assure) {
+    throw new AppError(404, "Aucun patient qui vous est confié ne correspond à ce matricule.");
+  }
 
   const feuille = await prisma.$transaction(async (tx) => {
     const consultation = await tx.consultation.create({
@@ -71,11 +89,8 @@ export async function createFeuille(input: CreateFeuilleInput, userId: string) {
 export async function listFeuilles(params: { q?: string; skip: number; take: number }, user: AuthUser) {
   const { q, skip, take } = params;
   const filters: Prisma.FeuilleMaladieWhereInput[] = [];
-  // Un médecin ne voit que ses feuilles ; l'assureur les voit toutes.
-  if (user.role !== Role.ASSUREUR) {
-    const medecin = await prisma.medecin.findUnique({ where: { utilisateurId: user.id } });
-    filters.push({ medecinId: medecin?.id ?? '00000000-0000-0000-0000-000000000000' });
-  }
+  const actor = await resolveMedicalActor(user);
+  if (actor.kind === 'medecin') filters.push(feuilleAccessWhere(actor.medecinId, actor.type));
   if (q) {
     filters.push({
       OR: [
@@ -95,9 +110,21 @@ export async function listFeuilles(params: { q?: string; skip: number; take: num
   return { total, items: items.map(decryptFeuille) };
 }
 
-export async function getFeuille(id: string) {
-  const feuille = await prisma.feuilleMaladie.findUnique({ where: { id }, include: feuilleInclude });
-  if (!feuille) throw new AppError(404, 'Feuille introuvable.');
+export async function getFeuille(id: string, user: AuthUser) {
+  const actor = await resolveMedicalActor(user);
+  const feuille = actor.kind === 'assureur'
+    ? await prisma.feuilleMaladie.findUnique({ where: { id }, include: feuilleInclude })
+    : await prisma.feuilleMaladie.findFirst({
+        where: { AND: [{ id }, feuilleAccessWhere(actor.medecinId, actor.type)] },
+        include: feuilleInclude,
+      });
+  if (!feuille) throw new AppError(404, 'Feuille introuvable ou non accessible.');
+  await recordAudit({
+    utilisateurId: user.id,
+    action: 'FEUILLE_CONSULTEE',
+    entite: 'FeuilleMaladie',
+    entiteId: id,
+  });
   return decryptFeuille(feuille);
 }
 

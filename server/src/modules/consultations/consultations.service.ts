@@ -1,7 +1,8 @@
-import { Prisma, Role } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { decryptConsultation } from '../../lib/phi';
 import type { AuthUser } from '../../lib/jwt';
+import { consultationAccessWhere, resolveMedicalActor } from '../../lib/medicalAccess';
 
 const include = {
   assure: { include: { personne: true } },
@@ -10,9 +11,9 @@ const include = {
 
 export async function listConsultations(params: { q?: string; skip: number; take: number }, user: AuthUser) {
   const filters: Prisma.ConsultationWhereInput[] = [];
-  if (user.role !== Role.ASSUREUR) {
-    const medecin = await prisma.medecin.findUnique({ where: { utilisateurId: user.id } });
-    filters.push({ medecinId: medecin?.id ?? '00000000-0000-0000-0000-000000000000' });
+  const actor = await resolveMedicalActor(user);
+  if (actor.kind === 'medecin') {
+    filters.push(consultationAccessWhere(actor.medecinId, actor.type));
   }
   if (params.q) {
     filters.push({
