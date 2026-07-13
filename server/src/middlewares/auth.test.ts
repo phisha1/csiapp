@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { Role } from '@prisma/client';
-import { requireRole } from './auth';
+import { isTemporaryPasswordRouteAllowed, requireRole } from './auth';
 
 // requireRole est le garde RBAC : il décide, à partir de req.user.role, si l'accès
 // à une route est autorisé. Fonction pure (pas de base) → testable en isolation.
@@ -32,5 +32,18 @@ describe('requireRole (contrôle d\'accès par rôle)', () => {
     const next = vi.fn();
     expect(() => requireRole(Role.ADMIN)(fakeReq(undefined), res, next)).toThrow();
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('restriction du mot de passe temporaire', () => {
+  it('autorise uniquement les routes nécessaires au remplacement et à la sortie', () => {
+    expect(isTemporaryPasswordRouteAllowed('/api/auth/change-password')).toBe(true);
+    expect(isTemporaryPasswordRouteAllowed('/api/auth/me')).toBe(true);
+    expect(isTemporaryPasswordRouteAllowed('/api/auth/logout')).toBe(true);
+  });
+
+  it('refuse les routes métier tant que le mot de passe temporaire est actif', () => {
+    expect(isTemporaryPasswordRouteAllowed('/api/admin/utilisateurs')).toBe(false);
+    expect(isTemporaryPasswordRouteAllowed('/api/assures')).toBe(false);
   });
 });

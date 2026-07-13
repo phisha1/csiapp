@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword } from '../../lib/password';
 import { signToken, type AuthUser } from '../../lib/jwt';
 import { recordAudit } from '../../lib/audit';
 import type { ChangePasswordInput, LoginInput } from './auth.schemas';
+import { isTemporaryPasswordExpired } from '../../lib/temporaryPassword';
 
 const compteBloqueMsg = `Compte bloqué après ${env.MAX_LOGIN_ATTEMPTS} tentatives échouées. Contactez l'administrateur pour le débloquer.`;
 
@@ -16,11 +17,17 @@ function toPublic(u: Utilisateur) {
     role: u.role,
     statut: u.statut,
     doitChangerMotDePasse: u.doitChangerMotDePasse,
+    motDePasseTemporaireExpireLe: u.motDePasseTemporaireExpireLe,
   };
 }
 
 function session(u: Utilisateur) {
-  const authUser: AuthUser = { id: u.id, role: u.role, login: u.login };
+  const authUser: AuthUser = {
+    id: u.id,
+    role: u.role,
+    login: u.login,
+    versionSession: u.versionSession,
+  };
   return { token: signToken(authUser), utilisateur: toPublic(u) };
 }
 
@@ -56,6 +63,14 @@ export async function login(input: LoginInput) {
     );
   }
 
+  if (
+    user.doitChangerMotDePasse &&
+    isTemporaryPasswordExpired(user.motDePasseTemporaireExpireLe)
+  ) {
+    await recordAudit({ utilisateurId: user.id, action: 'MOT_DE_PASSE_TEMPORAIRE_EXPIRE' });
+    throw new AppError(403, 'Mot de passe temporaire expiré. Demandez une réinitialisation à votre administrateur.');
+  }
+
   const updated = await prisma.utilisateur.update({
     where: { id: user.id },
     data: { nbEchecs: 0, derniereConnexion: new Date() },
@@ -71,14 +86,19 @@ export async function changePassword(userId: string, input: ChangePasswordInput)
 
   const actuelOk = await verifyPassword(input.motDePasseActuel, user.motDePasseHash);
   if (!actuelOk) throw new AppError(401, 'Mot de passe actuel incorrect.');
+  if (input.motDePasseActuel === input.nouveauMotDePasse) {
+    throw new AppError(400, 'Le nouveau mot de passe doit être différent du mot de passe actuel.');
+  }
 
   await prisma.utilisateur.update({
     where: { id: userId },
     data: {
       motDePasseHash: await hashPassword(input.nouveauMotDePasse),
       doitChangerMotDePasse: false,
+      motDePasseTemporaireExpireLe: null,
       // Invalide toutes les sessions existantes, y compris celle en cours (OWASP ASVS).
       jetonsInvalidesAvant: new Date(),
+      versionSession: { increment: 1 },
     },
   });
   await recordAudit({ utilisateurId: userId, action: 'MOT_DE_PASSE_CHANGE' });

@@ -37,3 +37,5 @@ services:
         value: 2h
       - key: MAX_LOGIN_ATTEMPTS
         value: "5"
+      - key: TEMP_PASSWORD_EXPIRES_HOURS
+        value: "24"

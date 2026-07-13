@@ -26,5 +26,13 @@ export async function changePasswordHandler(req: Request, res: Response) {
 export async function meHandler(req: Request, res: Response) {
   // On n'expose que l'identité publique (pas les métadonnées techniques du jeton).
   const u = req.user;
-  res.json({ utilisateur: u && { id: u.id, login: u.login, role: u.role } });
+  res.json({
+    utilisateur: u && {
+      id: u.id,
+      login: u.login,
+      role: u.role,
+      doitChangerMotDePasse: u.doitChangerMotDePasse,
+      motDePasseTemporaireExpireLe: u.motDePasseTemporaireExpireLe,
+    },
+  });
 }

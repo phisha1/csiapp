@@ -121,6 +121,8 @@ interface AppState {
   role: Role;
   userId: string;
   userLogin: string;
+  mustChangePassword: boolean;
+  temporaryPasswordExpiresAt: string | null;
   loginId: string;
   loginPw: string;
   loginError: string;
@@ -267,6 +269,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   role: 'assureur',
   userId: '',
   userLogin: '',
+  mustChangePassword: false,
+  temporaryPasswordExpiresAt: null,
   loginId: '',
   loginPw: '',
   loginError: '',
@@ -353,7 +357,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     try {
-      const res = await api.post<{ token: string; utilisateur: { id: string; login: string; role: string } }>('/auth/login', {
+      const res = await api.post<{ token: string; utilisateur: { id: string; login: string; role: string; doitChangerMotDePasse: boolean; motDePasseTemporaireExpireLe: string | null } }>('/auth/login', {
         login: loginId,
         motDePasse: loginPw,
       });
@@ -368,6 +372,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         role,
         userId: res.utilisateur.id,
         userLogin: res.utilisateur.login,
+        mustChangePassword: res.utilisateur.doitChangerMotDePasse,
+        temporaryPasswordExpiresAt: res.utilisateur.motDePasseTemporaireExpireLe,
         screen: role === 'admin' ? 'admin_users' : 'dashboard',
         loginError: '',
         loginAttempts: 0,
@@ -384,13 +390,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   logout: () => {
     setToken(null);
-    set({ authed: false, authStage: 'landing', userId: '', userLogin: '', loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
+    set({ authed: false, authStage: 'landing', userId: '', userLogin: '', mustChangePassword: false, temporaryPasswordExpiresAt: null, loginId: '', loginPw: '', screen: 'dashboard', loginAttempts: 0, loginLocked: false, navOpen: false });
   },
   // Restaure la session au démarrage si un jeton valide existe.
   restoreSession: async () => {
     if (!getToken()) return;
     try {
-      const res = await api.get<{ utilisateur: { id: string; login: string; role: string } }>('/auth/me');
+      const res = await api.get<{ utilisateur: { id: string; login: string; role: string; doitChangerMotDePasse: boolean; motDePasseTemporaireExpireLe: string | null } }>('/auth/me');
       const role: Role = res.utilisateur.role === 'ADMIN'
         ? 'admin'
         : res.utilisateur.role === 'ASSUREUR'
@@ -401,6 +407,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         role,
         userId: res.utilisateur.id,
         userLogin: res.utilisateur.login,
+        mustChangePassword: res.utilisateur.doitChangerMotDePasse,
+        temporaryPasswordExpiresAt: res.utilisateur.motDePasseTemporaireExpireLe,
         screen: role === 'admin' ? 'admin_users' : get().screen,
       });
     } catch {
