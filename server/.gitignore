@@ -4,5 +4,7 @@ dist/
 .env.local
 *.log
 coverage/
-factures/
-backups/
+# Dossiers de sortie à la racine du serveur uniquement (le `/` initial les ancre).
+# Sans ancrage, `factures/` ignorait aussi le module src/modules/factures/ !
+/factures/
+/backups/
