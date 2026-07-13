@@ -16,6 +16,7 @@ La couverture à 100 % reste l’objectif. Les tests permettent de modifier rapi
 npm test
 npm run test:watch
 npm run test:e2e
+npm run test:e2e:business
 npm run test:e2e:headed
 npm run typecheck
 ```
@@ -27,6 +28,7 @@ npm run typecheck
 - Tests d’intégration : échanges entre le store, les composants et un client API simulé.
 - Tests navigateur : parcours dans Chromium, Firefox et WebKit, avec profils bureau et mobile, sous `e2e/`.
 - Accessibilité : scans axe automatisés sur les règles WCAG A et AA détectables par un outil.
+- Parcours métier : une fixture isolée valide le remboursement d’une feuille, la création de facture et l’archive PDF, puis elle est supprimée automatiquement.
 
 Avant le premier lancement local des tests navigateur :
 
