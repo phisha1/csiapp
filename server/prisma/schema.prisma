@@ -84,8 +84,12 @@ model Utilisateur {
   // Tout jeton émis avant cette date est refusé (invalidation de TOUTES les sessions
   // sur changement/réinitialisation de mot de passe — OWASP ASVS).
   jetonsInvalidesAvant DateTime?
+  // Version embarquée dans les JWT ; son incrément invalide toutes les sessions précédentes.
+  versionSession       Int         @default(0)
   // Vrai après une réinitialisation admin : l'utilisateur doit choisir un nouveau mot de passe.
   doitChangerMotDePasse Boolean    @default(false)
+  // Date limite d'utilisation du mot de passe initial ou réinitialisé.
+  motDePasseTemporaireExpireLe DateTime?
   medecin           Medecin?
   audits            JournalAudit[]
   createdAt         DateTime       @default(now())

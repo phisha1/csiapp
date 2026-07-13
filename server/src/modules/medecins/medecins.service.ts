@@ -4,6 +4,7 @@ import { AppError } from '../../middlewares/errors';
 import { hashPassword } from '../../lib/password';
 import { recordAudit } from '../../lib/audit';
 import type { CreateMedecinInput, UpdateMedecinInput } from './medecins.schemas';
+import { temporaryPasswordExpiresAt } from '../../lib/temporaryPassword';
 
 const withRelations = { personne: true, specialite: true } as const;
 
@@ -43,7 +44,13 @@ export async function createMedecin(input: CreateMedecinInput, actorId: string) 
       },
     });
     const utilisateur = await tx.utilisateur.create({
-      data: { login: input.login, motDePasseHash, role },
+      data: {
+        login: input.login,
+        motDePasseHash,
+        role,
+        doitChangerMotDePasse: true,
+        motDePasseTemporaireExpireLe: temporaryPasswordExpiresAt(),
+      },
     });
     return tx.medecin.create({
       data: {

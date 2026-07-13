@@ -4,6 +4,7 @@ import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
 import { generateTemporaryPassword, hashPassword } from '../../lib/password';
 import type { CreateAssureurInput } from './admin.schemas';
+import { temporaryPasswordExpiresAt } from '../../lib/temporaryPassword';
 
 // Champs exposés d'un utilisateur (jamais le hash du mot de passe).
 const publicSelect = {
@@ -14,6 +15,7 @@ const publicSelect = {
   nbEchecs: true,
   derniereConnexion: true,
   doitChangerMotDePasse: true,
+  motDePasseTemporaireExpireLe: true,
   createdAt: true,
 } as const;
 
@@ -37,6 +39,7 @@ export async function creerAssureur(input: CreateAssureurInput, adminId: string)
         motDePasseHash: await hashPassword(motDePasseTemporaire),
         role: Role.ASSUREUR,
         doitChangerMotDePasse: true,
+        motDePasseTemporaireExpireLe: temporaryPasswordExpiresAt(),
       },
       select: publicSelect,
     });
@@ -113,9 +116,11 @@ export async function reinitialiserMotDePasse(id: string, adminId: string) {
     data: {
       motDePasseHash: await hashPassword(motDePasseTemporaire),
       doitChangerMotDePasse: true, // devra le changer dès la première connexion
+      motDePasseTemporaireExpireLe: temporaryPasswordExpiresAt(),
       statut: StatutCompte.ACTIF, // un compte oublié était souvent bloqué
       nbEchecs: 0,
       jetonsInvalidesAvant: new Date(), // coupe toute session existante
+      versionSession: { increment: 1 },
     },
   });
   await recordAudit({ utilisateurId: adminId, action: 'MOT_DE_PASSE_REINITIALISE', entite: 'Utilisateur', entiteId: id });

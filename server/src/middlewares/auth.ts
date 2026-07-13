@@ -4,6 +4,17 @@ import { prisma } from '../config/prisma';
 import { verifyToken, type VerifiedToken } from '../lib/jwt';
 import { isRevoked } from '../lib/tokenDenylist';
 import { AppError } from './errors';
+import { isTemporaryPasswordExpired } from '../lib/temporaryPassword';
+
+const TEMPORARY_PASSWORD_ALLOWED_PATHS = new Set([
+  '/api/auth/change-password',
+  '/api/auth/logout',
+  '/api/auth/me',
+]);
+
+export function isTemporaryPasswordRouteAllowed(path: string) {
+  return TEMPORARY_PASSWORD_ALLOWED_PATHS.has(path);
+}
 
 /** Exige un jeton JWT valide, non révoqué, et un compte toujours actif. */
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
@@ -25,22 +36,46 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   // immédiatement, sans attendre l'expiration du jeton (coût : une lecture par requête).
   const compte = await prisma.utilisateur.findUnique({
     where: { id: verified.id },
-    select: { statut: true, jetonsInvalidesAvant: true },
+    select: {
+      statut: true,
+      jetonsInvalidesAvant: true,
+      versionSession: true,
+      doitChangerMotDePasse: true,
+      motDePasseTemporaireExpireLe: true,
+    },
   });
   if (!compte) throw new AppError(401, 'Compte introuvable.');
   if (compte.statut !== StatutCompte.ACTIF) {
     throw new AppError(403, 'Compte non actif — accès suspendu. Contactez un administrateur.');
   }
+  if (verified.versionSession !== compte.versionSession) {
+    throw new AppError(401, 'Session remplacée ou expirée — veuillez vous reconnecter.');
+  }
   // Jeton émis avant une invalidation globale (changement/réinitialisation de mot de passe) ?
-  // iat est en secondes (tronqué) : on compare donc en secondes entières, sinon un jeton
-  // émis dans la même seconde que l'invalidation serait rejeté à tort.
   if (
     compte.jetonsInvalidesAvant &&
     verified.iat < Math.floor(compte.jetonsInvalidesAvant.getTime() / 1000)
   ) {
     throw new AppError(401, 'Session expirée après changement de mot de passe — reconnectez-vous.');
   }
-  req.user = verified;
+
+  if (compte.doitChangerMotDePasse) {
+    if (
+      isTemporaryPasswordExpired(compte.motDePasseTemporaireExpireLe) &&
+      req.originalUrl !== '/api/auth/logout'
+    ) {
+      throw new AppError(403, 'Mot de passe temporaire expiré. Demandez une réinitialisation à votre administrateur.');
+    }
+    if (!isTemporaryPasswordRouteAllowed(req.originalUrl)) {
+      throw new AppError(428, 'Vous devez changer votre mot de passe temporaire avant de continuer.');
+    }
+  }
+
+  req.user = {
+    ...verified,
+    doitChangerMotDePasse: compte.doitChangerMotDePasse,
+    motDePasseTemporaireExpireLe: compte.motDePasseTemporaireExpireLe,
+  };
   next();
 }
 

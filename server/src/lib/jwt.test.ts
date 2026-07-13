@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { signToken, verifyToken, type AuthUser } from './jwt';
 import { Role } from '@prisma/client';
 
-const user: AuthUser = { id: 'u-123', role: Role.ASSUREUR, login: 'agent01' };
+const user: AuthUser = { id: 'u-123', role: Role.ASSUREUR, login: 'agent01', versionSession: 3 };
 
 describe('jwt (jetons de session signés)', () => {
   // CAS NOMINAL — ce qu'on signe, on doit le retrouver intact après vérification.
@@ -12,6 +12,7 @@ describe('jwt (jetons de session signés)', () => {
     expect(decoded.id).toBe('u-123');
     expect(decoded.role).toBe(Role.ASSUREUR);
     expect(decoded.login).toBe('agent01');
+    expect(decoded.versionSession).toBe(3);
   });
 
   // PROPRIÉTÉ DE SÉCURITÉ — un jeton falsifié doit être REJETÉ.

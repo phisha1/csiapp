@@ -14,6 +14,7 @@ interface AdminUser {
   nbEchecs: number;
   derniereConnexion: string | null;
   doitChangerMotDePasse: boolean;
+  motDePasseTemporaireExpireLe: string | null;
   createdAt: string;
 }
 
@@ -222,7 +223,11 @@ export function AdminUsers() {
                       <td style={{ padding: '13px 14px' }}>{displayRole(user.role)}</td>
                       <td style={{ padding: '13px 14px' }}>
                         <span style={{ ...statusColors(user.statut), display: 'inline-flex', borderRadius: 999, padding: '4px 8px', fontSize: 11.5, fontWeight: 700 }}>{displayStatus(user.statut)}</span>
-                        {user.doitChangerMotDePasse && <div style={{ color: '#9a6815', fontSize: 10.5, marginTop: 5 }}>Mot de passe temporaire</div>}
+                        {user.doitChangerMotDePasse && (
+                          <div style={{ color: '#9a6815', fontSize: 10.5, marginTop: 5 }}>
+                            Temporaire{user.motDePasseTemporaireExpireLe ? ` · expire le ${formatDate(user.motDePasseTemporaireExpireLe)}` : ''}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '13px 14px' }}>{user.nbEchecs}</td>
                       <td style={{ padding: '13px 14px', color: 'var(--csi-text-2)' }}>{formatDate(user.derniereConnexion)}</td>

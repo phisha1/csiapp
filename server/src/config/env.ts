@@ -9,6 +9,7 @@ const schema = z.object({
   JWT_SECRET: z.string().min(8, 'JWT_SECRET doit faire au moins 8 caractères'),
   JWT_EXPIRES_IN: z.string().default('2h'),
   MAX_LOGIN_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  TEMP_PASSWORD_EXPIRES_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   ENCRYPTION_KEY: z
     .string()
     .min(16, 'ENCRYPTION_KEY doit faire au moins 16 caractères')
