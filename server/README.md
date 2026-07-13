@@ -5,7 +5,7 @@ Projet tutoré ENSPY, Groupe 4. Couvre les besoins BF1–BF12 et BNF1–BNF7.
 
 ## Prérequis
 
-- Node.js ≥ 18 (testé sur 24)
+- Node.js ≥ 20.19 (la CI utilise la version définie dans `.nvmrc`)
 - PostgreSQL ≥ 14 (la machine de dev utilise PostgreSQL 18, en écoute sur `localhost:5432`)
 
 ## Installation
