@@ -5,6 +5,7 @@ import { verifyToken, type VerifiedToken } from '../lib/jwt';
 import { isRevoked } from '../lib/tokenDenylist';
 import { AppError } from './errors';
 import { isTemporaryPasswordExpired } from '../lib/temporaryPassword';
+import { readSessionToken } from '../lib/sessionCookie';
 
 const TEMPORARY_PASSWORD_ALLOWED_PATHS = new Set([
   '/api/auth/change-password',
@@ -18,13 +19,13 @@ export function isTemporaryPasswordRouteAllowed(path: string) {
 
 /** Exige un jeton JWT valide, non révoqué, et un compte toujours actif. */
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+  const token = readSessionToken(req);
+  if (!token) {
     throw new AppError(401, 'Authentification requise.');
   }
   let verified: VerifiedToken;
   try {
-    verified = verifyToken(header.slice(7));
+    verified = verifyToken(token);
   } catch {
     throw new AppError(401, 'Jeton invalide ou expiré.');
   }

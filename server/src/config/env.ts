@@ -8,6 +8,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL est requis'),
   JWT_SECRET: z.string().min(8, 'JWT_SECRET doit faire au moins 8 caractères'),
   JWT_EXPIRES_IN: z.string().default('2h'),
+  SESSION_COOKIE_MAX_AGE_SECONDS: z.coerce.number().int().min(300).max(86400).default(7200),
   MAX_LOGIN_ATTEMPTS: z.coerce.number().int().positive().default(5),
   TEMP_PASSWORD_EXPIRES_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   ENCRYPTION_KEY: z

@@ -16,6 +16,7 @@ import facturesRoutes from './modules/factures/factures.routes';
 import auditRoutes from './modules/audit/audit.routes';
 import consultationsRoutes from './modules/consultations/consultations.routes';
 import statsRoutes from './modules/stats/stats.routes';
+import { createCsrfProtection } from './middlewares/csrf';
 
 export function createApp() {
   const app = express();
@@ -31,6 +32,7 @@ export function createApp() {
   app.use(helmet());
   app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json());
+  app.use(createCsrfProtection(allowedOrigins));
 
   // Limitation de débit globale (atténue le brute-force — BNF1)
   app.use(

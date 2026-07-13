@@ -40,6 +40,16 @@ Architecture : **React (Vercel)** → appelle l'**API Express (Render)** → **P
    utile pour les déploiements *preview* Vercel).
 2. Redéployer le backend (ou *Manual Deploy → Clear cache*). C'est prêt.
 
+### Session navigateur
+
+- L'authentification utilise un cookie `HttpOnly`, `Secure` et `SameSite=None` en
+  production. Le JWT n'est jamais accessible au JavaScript du frontend.
+- `CORS_ORIGIN` doit contenir uniquement les URL exactes et fiables du frontend :
+  cette liste sert également à la protection CSRF des opérations d'écriture.
+- Le frontend et l'API doivent impérativement être servis en HTTPS. Pour une offre
+  commerciale, utiliser idéalement deux sous-domaines du même domaine contrôlé
+  (`app.exemple.cm` et `api.exemple.cm`) afin d'éviter le blocage des cookies tiers.
+
 ---
 
 ## Points à connaître
