@@ -5,7 +5,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    // Port dédié à csiapp (5173 est utilisé par un autre projet).
+    // strictPort : échoue clairement au lieu de dériver silencieusement (sinon CORS casse).
+    port: 5175,
+    strictPort: true,
     open: true,
   },
 });
