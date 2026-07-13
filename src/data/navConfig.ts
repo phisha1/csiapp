@@ -3,7 +3,6 @@ import type { Role, ScreenKey } from '../types';
 export interface NavEntry {
   key: ScreenKey;
   label: string;
-  badge?: string;
 }
 
 /** Configuration de navigation par rôle (fidèle à `navConfig()`). */
@@ -15,7 +14,7 @@ export const navConfig: Record<Role, NavEntry[]> = {
     { key: 'dashboard', label: 'Tableau de bord' },
     { key: 'assures', label: 'Assurés' },
     { key: 'medecins', label: 'Médecins' },
-    { key: 'feuilles', label: 'Feuilles de maladie', badge: '2' },
+    { key: 'feuilles', label: 'Feuilles de maladie' },
     { key: 'remboursements', label: 'Remboursements' },
     { key: 'factures', label: 'Factures' },
     { key: 'parametres', label: 'Paramètres' },

@@ -1,8 +1,26 @@
 import { Box } from '../ui/Box';
 import { Icon } from '../ui/Icon';
 import { navConfig } from '../../data/navConfig';
+import { useFetch } from '../../lib/useApi';
 import { useAppStore } from '../../store/useAppStore';
 import { useViewport } from '../../lib/useViewport';
+
+interface AssureurStats {
+  feuillesAttente: number;
+}
+
+function PendingSheetsBadge({ active }: { active: boolean }) {
+  const { data } = useFetch<AssureurStats>('/stats');
+  const count = data?.feuillesAttente ?? 0;
+
+  if (count <= 0) return null;
+
+  return (
+    <span style={{ background: active ? '#e07b1f' : 'rgba(255,255,255,.12)', color: '#fff', fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
+      {count}
+    </span>
+  );
+}
 
 export function Sidebar() {
   const { role, screen, go, logout, navOpen, userLogin } = useAppStore();
@@ -59,10 +77,8 @@ export function Sidebar() {
                 <Icon name={item.key} />
               </span>
               <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
-              {item.badge && (
-                <span style={{ background: active ? '#e07b1f' : 'rgba(255,255,255,.12)', color: '#fff', fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
-                  {item.badge}
-                </span>
+              {role === 'assureur' && item.key === 'feuilles' && (
+                <PendingSheetsBadge key={screen} active={active} />
               )}
             </Box>
           );
