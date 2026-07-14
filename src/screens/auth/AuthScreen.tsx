@@ -25,14 +25,8 @@ export function AuthScreen() {
           </div>
         </div>
         <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 12, letterSpacing: '.22em', textTransform: 'uppercase', color: '#e07b1f', marginBottom: 18 }}>Projet CSI — ENSPY</div>
           <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 38, lineHeight: 1.18, margin: '0 0 18px', fontWeight: 600 }}>Système d'Information pour un Organisme de Sécurité Sociale</h1>
           <p style={{ fontSize: 15, lineHeight: 1.65, color: '#c2d0e6', maxWidth: 420, margin: 0 }}>Gestion des assurés, feuilles de maladie, prescriptions, remboursements et facturation pour un organisme de sécurité sociale.</p>
-        </div>
-        <div style={{ position: 'relative', fontSize: 13, color: '#8ea4c4', display: 'flex', gap: 22, flexWrap: 'wrap' }}>
-          <span>Conception de Systèmes d'Information</span>
-          <span style={{ color: '#5d7' }}>·</span>
-          <span>École Nationale Supérieure Polytechnique de Yaoundé</span>
         </div>
       </div>
 
@@ -61,8 +55,7 @@ export function AuthScreen() {
                   <div style={{ fontSize: 14, fontWeight: 600 }}>CNAM · Assurance Maladie</div>
                 </div>
               </div>
-              <div style={{ position: 'relative', marginTop: 12, fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase', color: '#e07b1f', fontWeight: 600 }}>Projet CSI — ENSPY</div>
-              <div style={{ position: 'relative', marginTop: 5, fontSize: 12.5, color: '#c2d0e6', lineHeight: 1.5 }}>Gestion des assurés, feuilles de maladie, prescriptions et remboursements.</div>
+              <div style={{ position: 'relative', marginTop: 10, fontSize: 12.5, color: '#c2d0e6', lineHeight: 1.5 }}>Gestion des assurés, feuilles de maladie, prescriptions et remboursements.</div>
             </div>
           )}
 
