@@ -36,7 +36,7 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "pdfkit": "^0.19.1",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -51,5 +51,8 @@
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }

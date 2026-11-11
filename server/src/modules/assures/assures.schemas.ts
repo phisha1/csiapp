@@ -17,7 +17,7 @@ export const createAssureSchema = z
     email: z.string().email('Adresse e-mail invalide.').optional(),
     matricule: z
       .string()
-      .regex(/^ASS-\d{4}-\d{4}$/, 'Format attendu : ASS-AAAA-NNNN.')
+      .regex(/^ASS-\d{4}-\d{4,}$/, 'Format attendu : ASS-AAAA-NNNN.')
       .optional(),
     numeroSecu: z.string().optional(),
     profession: z.string().optional(),

@@ -50,7 +50,17 @@ Le mot de passe initial doit avoir au moins 12 caractères, avec majuscule, minu
 
 Un build de production échoue volontairement si `VITE_API_URL` manque, n’utilise pas HTTPS ou ne se termine pas par `/api`. Cela évite de livrer un frontend qui appelle `localhost`.
 
-Pour une offre commerciale, utiliser de préférence deux sous-domaines du même domaine, par exemple `app.exemple.cm` et `api.exemple.cm`.
+Le frontend et l'API **doivent** être servis sous le même domaine, par exemple `app.exemple.cm` et `api.exemple.cm`. Le cookie de session est émis en `SameSite=Lax` : entre deux domaines différents (`*.vercel.app` et `*.onrender.com`), il devient un cookie tiers, que Safari, les iPhone et la navigation privée bloquent — la connexion échoue alors sans message clair.
+
+Pour une démonstration provisoire sans nom de domaine, `SESSION_COOKIE_SAMESITE=none` rétablit le fonctionnement inter-domaines sur Chrome et Firefox uniquement. Ne pas ouvrir à des utilisateurs réels dans cette configuration.
+
+## 3 bis. Règles métier à connaître avant l'ouverture
+
+- **Comptes médecins** : l'assureur enregistre le médecin, mais ne choisit plus son mot de passe. Le compte naît inactif ; l'administrateur l'active avec « Réinitialiser » et remet le mot de passe temporaire au médecin.
+- **Validation et paiement** : l'agent qui valide une feuille ne peut pas la rembourser (`SEPARATION_VALIDATION_PAIEMENT=true`). Il faut donc au moins deux comptes assureur.
+- **Virements** : le connecteur bancaire livré est un simulateur. En production, le mode « virement » est refusé tant que `ALLOW_MOCK_BANK` ne vaut pas `true`. Brancher une vraie banque dans `server/src/lib/bank.ts` avant de l'activer.
+- **Remboursement « en cours »** : si l'issue d'un virement est inconnue, le remboursement reste `EN_COURS` et bloque toute relance. Le lever après rapprochement bancaire, jamais à l'aveugle.
+- **Connexion** : après 5 échecs, le compte est verrouillé 15 minutes puis se rouvre seul. Plus aucun compte n'est bloqué définitivement par des tentatives extérieures.
 
 ## 4. Sauvegardes et restauration
 

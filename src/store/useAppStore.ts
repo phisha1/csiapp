@@ -38,14 +38,12 @@ const today = '2026-06-20';
 const v = (x: unknown) => (x == null ? '' : String(x)).trim();
 
 /** Nombre de tentatives de connexion avant verrouillage du compte (cahier des besoins BNF1). */
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCK_MSG = `Compte bloqué après ${MAX_LOGIN_ATTEMPTS} tentatives échouées. Contactez l'administrateur pour le débloquer.`;
 
 /** Validation d'une feuille de maladie. */
 export function validateFeuille(f: FeuilleForm): Partial<Record<keyof FeuilleForm, string>> {
   const e: Partial<Record<keyof FeuilleForm, string>> = {};
   if (!v(f.numAssure)) e.numAssure = "Le numéro d'assuré est obligatoire.";
-  else if (!/^ASS-\d{4}-\d{4}$/.test(v(f.numAssure))) e.numAssure = 'Format attendu : ASS-AAAA-NNNN.';
+  else if (!/^ASS-\d{4}-\d{4,}$/.test(v(f.numAssure))) e.numAssure = 'Format attendu : ASS-AAAA-NNNN.';
   if (!v(f.dateConsult)) e.dateConsult = 'La date de consultation est obligatoire.';
   else if (v(f.dateConsult) > today) e.dateConsult = 'La date ne peut pas être dans le futur.';
   const mn = Number(v(f.montant).replace(/\s/g, '').replace(/[^\d.]/g, ''));
@@ -66,8 +64,6 @@ export function validateMed(f: MedForm): Partial<Record<keyof MedForm, string>> 
   if (v(f.type) === 'Spécialiste' && !v(f.specialite)) e.specialite = 'La spécialité est requise pour un spécialiste.';
   if (!v(f.email)) e.email = "L'adresse e-mail est obligatoire.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v(f.email))) e.email = 'Adresse e-mail invalide.';
-  if (!v(f.mdp)) e.mdp = 'Le mot de passe provisoire est obligatoire.';
-  else if (v(f.mdp).length < 8) e.mdp = '8 caractères minimum.';
   return e;
 }
 
@@ -87,7 +83,7 @@ export function validateRembBank(b: RembBank, mode: RembMode): Partial<Record<ke
   return e;
 }
 
-const EMPTY_MED_FORM: MedForm = { nom: '', prenom: '', numOrdre: '', type: 'Généraliste', specialite: '', tel: '', etab: '', email: '', mdp: '' };
+const EMPTY_MED_FORM: MedForm = { nom: '', prenom: '', numOrdre: '', type: 'Généraliste', specialite: '', tel: '', etab: '', email: '' };
 const INITIAL_FEUILLE_FORM: FeuilleForm = {
   numAssure: 'ASS-2024-0142',
   dateConsult: '2026-06-14',
@@ -349,11 +345,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setLoginPw: (val) => set({ loginPw: val, loginError: '' }),
   // Authentification réelle contre l'API (JWT). Le rôle est déduit du compte.
   doLogin: async () => {
-    const { loginId, loginPw, loginLocked } = get();
-    if (loginLocked) {
-      set({ loginError: LOCK_MSG });
-      return;
-    }
+    const { loginId, loginPw } = get();
     if (!loginId || !loginPw) {
       set({ loginError: "Veuillez renseigner l'identifiant et le mot de passe." });
       return;
@@ -384,7 +376,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
     } catch (e) {
       if (e instanceof ApiError) {
-        set({ loginError: e.message, loginLocked: e.status === 423 });
+        // 423 = compte suspendu par un administrateur (le verrou après échecs est temporaire).
+        set({ loginError: e.message, loginLocked: false });
       } else {
         set({ loginError: "Connexion au serveur impossible. Vérifiez que l'API est démarrée (port 4000)." });
       }
@@ -564,11 +557,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         etablissement: f.etab || undefined,
         email: f.email,
         login: f.email,
-        motDePasse: f.mdp,
       });
       set({ medForm: { ...EMPTY_MED_FORM }, medTouched: {}, medTried: false });
       get().go('medecins');
-      get().showToast('Médecin enregistré · ' + res.numOrdre);
+      get().showToast('Médecin enregistré · ' + res.numOrdre + " — l'administrateur lui remettra son mot de passe");
     } catch (e) {
       get().showToast(e instanceof ApiError ? e.message : "Échec de l'enregistrement du médecin.");
     }

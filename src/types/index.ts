@@ -57,7 +57,6 @@ export interface MedForm {
   tel: string;
   etab: string;
   email: string;
-  mdp: string;
 }
 
 /** Formulaire de création d'une feuille de maladie. */

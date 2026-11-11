@@ -21,7 +21,6 @@ const medecinValide: MedForm = {
   tel: '699000000',
   etab: 'Hôpital central',
   email: 'marie.atangana@example.test',
-  mdp: 'Temporaire-2026',
 };
 
 const banqueValide: RembBank = {

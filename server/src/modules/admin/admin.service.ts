@@ -13,6 +13,7 @@ const publicSelect = {
   role: true,
   statut: true,
   nbEchecs: true,
+  verrouilleJusquA: true,
   derniereConnexion: true,
   doitChangerMotDePasse: true,
   motDePasseTemporaireExpireLe: true,
@@ -66,7 +67,7 @@ export async function reactiver(id: string, adminId: string) {
   if (!user) throw new AppError(404, 'Utilisateur introuvable.');
   const updated = await prisma.utilisateur.update({
     where: { id },
-    data: { statut: StatutCompte.ACTIF, nbEchecs: 0 },
+    data: { statut: StatutCompte.ACTIF, nbEchecs: 0, verrouilleJusquA: null },
     select: publicSelect,
   });
   await recordAudit({ utilisateurId: adminId, action: 'COMPTE_REACTIVE', entite: 'Utilisateur', entiteId: id });
@@ -119,6 +120,7 @@ export async function reinitialiserMotDePasse(id: string, adminId: string) {
       motDePasseTemporaireExpireLe: temporaryPasswordExpiresAt(),
       statut: StatutCompte.ACTIF, // un compte oublié était souvent bloqué
       nbEchecs: 0,
+      verrouilleJusquA: null,
       jetonsInvalidesAvant: new Date(), // coupe toute session existante
       versionSession: { increment: 1 },
     },
