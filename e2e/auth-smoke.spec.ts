@@ -31,9 +31,9 @@ test('la page de connexion respecte les points de rupture bureau et mobile', asy
 
   if ((viewport?.width ?? 0) <= 767) {
     await expect(page.locator('.csi-auth-aside')).toBeHidden();
-    await expect(page.locator('.csi-auth-main').getByText('Projet CSI — ENSPY')).toBeVisible();
+    await expect(page.locator('.csi-auth-main').getByText(/Gestion des assurés, feuilles de maladie/)).toBeVisible();
   } else {
     await expect(page.locator('.csi-auth-aside')).toBeVisible();
-    await expect(page.locator('.csi-auth-aside').getByText('Projet CSI — ENSPY')).toBeVisible();
+    await expect(page.locator('.csi-auth-aside').getByText('CNAM · Assurance Maladie')).toBeVisible();
   }
 });

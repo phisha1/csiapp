@@ -22,7 +22,7 @@ npm-debug.log*
 !.vscode/extensions.json
 .idea/
 
-# Outils locaux (preview, config Claude Code)
+# Outils locaux (aperçu, configuration des assistants)
 .claude/
 .gstack/
 
