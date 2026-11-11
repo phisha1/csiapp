@@ -4,7 +4,7 @@ import { AppError } from '../../middlewares/errors';
 import { recordAudit } from '../../lib/audit';
 import { encryptPHI, decryptFeuille } from '../../lib/phi';
 import type { AuthUser } from '../../lib/jwt';
-import type { CompleterInput, CreateFeuilleInput } from './feuilles.schemas';
+import type { CreateFeuilleInput } from './feuilles.schemas';
 import {
   canStartMedicalRecordWhere,
   feuilleAccessWhere,
@@ -31,9 +31,9 @@ const TRANSITIONS: Record<EtatFeuille, EtatFeuille[]> = {
 };
 
 async function genCode(tx: Prisma.TransactionClient): Promise<string> {
-  const year = new Date().getFullYear();
-  const count = await tx.feuilleMaladie.count();
-  return `FM-${year}-${String(count + 1).padStart(4, '0')}`;
+  // Séquence PostgreSQL : deux feuilles créées en même temps n'ont jamais le même code.
+  const [{ n }] = await tx.$queryRaw<{ n: bigint }[]>`SELECT nextval('feuille_code_seq') AS n`;
+  return `FM-${new Date().getFullYear()}-${String(n).padStart(4, '0')}`;
 }
 
 /** Enregistre une feuille lors d'une consultation → état TRANSMISE (BF7). */
@@ -135,7 +135,11 @@ async function changeEtat(id: string, to: EtatFeuille, actorId: string, action: 
   if (!TRANSITIONS[feuille.etat].includes(to)) {
     throw new AppError(409, `Transition invalide : ${feuille.etat} → ${to}.`);
   }
-  const updated = await prisma.feuilleMaladie.update({ where: { id }, data: { etat: to }, include: feuilleInclude });
+  // Mise à jour conditionnelle : si l'état a changé entre la lecture et l'écriture
+  // (deux agents sur la même feuille), on refuse au lieu d'écraser.
+  const { count } = await prisma.feuilleMaladie.updateMany({ where: { id, etat: feuille.etat }, data: { etat: to } });
+  if (count !== 1) throw new AppError(409, 'La feuille vient d’être modifiée par un autre agent. Rechargez-la.');
+  const updated = await prisma.feuilleMaladie.findUniqueOrThrow({ where: { id }, include: feuilleInclude });
   await recordAudit({ utilisateurId: actorId, action, entite: 'FeuilleMaladie', entiteId: id, details });
   return decryptFeuille(updated);
 }
@@ -147,19 +151,25 @@ export const refuser = (id: string, motif: string | undefined, actorId: string) 
 export const marquerIncomplete = (id: string, motif: string | undefined, actorId: string) =>
   changeEtat(id, EtatFeuille.INCOMPLETE, actorId, 'FEUILLE_INCOMPLETE', { motif });
 
-/** Complète et valide une feuille (BF6) : taux auto 100 % généraliste / 80 % spécialiste (BF5). */
-export async function completer(id: string, input: CompleterInput, actorId: string) {
+/**
+ * Valide une feuille (BF6) : taux auto 100 % généraliste / 80 % spécialiste (BF5).
+ * Le diagnostic et le montant saisis par le médecin ne sont pas modifiables ici,
+ * et le validateur est retenu pour interdire qu'il paie lui-même la feuille.
+ */
+export async function completer(id: string, actorId: string) {
   const feuille = await prisma.feuilleMaladie.findUnique({ where: { id }, include: { medecin: true } });
   if (!feuille) throw new AppError(404, 'Feuille introuvable.');
-  if (feuille.etat !== EtatFeuille.TRANSMISE && feuille.etat !== EtatFeuille.EN_COURS) {
+  const etatsValidables: EtatFeuille[] = [EtatFeuille.TRANSMISE, EtatFeuille.EN_COURS];
+  if (!etatsValidables.includes(feuille.etat)) {
     throw new AppError(409, `Impossible de compléter une feuille à l'état ${feuille.etat}.`);
   }
   const taux = feuille.medecin.type === TypeMedecin.SPECIALISTE ? 80 : 100;
-  const updated = await prisma.feuilleMaladie.update({
-    where: { id },
-    data: { diagnostic: encryptPHI(input.diagnostic), montant: input.montant, etat: EtatFeuille.VALIDEE, taux },
-    include: feuilleInclude,
+  const { count } = await prisma.feuilleMaladie.updateMany({
+    where: { id, etat: { in: etatsValidables } },
+    data: { etat: EtatFeuille.VALIDEE, taux, valideParId: actorId },
   });
+  if (count !== 1) throw new AppError(409, 'La feuille vient d’être modifiée par un autre agent. Rechargez-la.');
+  const updated = await prisma.feuilleMaladie.findUniqueOrThrow({ where: { id }, include: feuilleInclude });
   await recordAudit({ utilisateurId: actorId, action: 'FEUILLE_VALIDEE', entite: 'FeuilleMaladie', entiteId: id, details: { taux } });
   return decryptFeuille(updated);
 }

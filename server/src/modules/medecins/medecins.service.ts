@@ -1,10 +1,10 @@
+import { randomBytes } from 'crypto';
 import { Prisma, Role, TypeMedecin } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../middlewares/errors';
 import { hashPassword } from '../../lib/password';
 import { recordAudit } from '../../lib/audit';
 import type { CreateMedecinInput, UpdateMedecinInput } from './medecins.schemas';
-import { temporaryPasswordExpiresAt } from '../../lib/temporaryPassword';
 import { medicalMedecinSelect } from '../../lib/medicalProjections';
 
 async function resolveSpecialiteId(libelle?: string): Promise<string | null> {
@@ -17,19 +17,25 @@ async function resolveSpecialiteId(libelle?: string): Promise<string | null> {
   return sp.id;
 }
 
-/** Enregistre un médecin + son compte utilisateur (BF2). */
+/**
+ * Enregistre un médecin + son compte utilisateur (BF2).
+ * Le compte naît inutilisable (mot de passe aléatoire que personne ne connaît, déjà
+ * expiré) : seul un administrateur l'active en remettant un mot de passe temporaire
+ * au médecin. L'assureur ne peut donc pas se connecter à la place d'un médecin.
+ */
 export async function createMedecin(input: CreateMedecinInput, actorId: string) {
+  const login = input.login.toLowerCase();
   if (await prisma.medecin.findUnique({ where: { numOrdre: input.numOrdre } })) {
     throw new AppError(409, "Ce numéro d'ordre est déjà enregistré.");
   }
-  if (await prisma.utilisateur.findUnique({ where: { login: input.login } })) {
+  if (await prisma.utilisateur.findUnique({ where: { login } })) {
     throw new AppError(409, 'Cet identifiant est déjà utilisé.');
   }
 
   const specialiteId =
     input.type === 'SPECIALISTE' ? await resolveSpecialiteId(input.specialite) : null;
   const role = input.type === 'SPECIALISTE' ? Role.SPECIALISTE : Role.GENERALISTE;
-  const motDePasseHash = await hashPassword(input.motDePasse);
+  const motDePasseHash = await hashPassword(randomBytes(32).toString('hex'));
 
   const medecin = await prisma.$transaction(async (tx) => {
     const personne = await tx.personne.create({
@@ -44,11 +50,11 @@ export async function createMedecin(input: CreateMedecinInput, actorId: string) 
     });
     const utilisateur = await tx.utilisateur.create({
       data: {
-        login: input.login,
+        login,
         motDePasseHash,
         role,
         doitChangerMotDePasse: true,
-        motDePasseTemporaireExpireLe: temporaryPasswordExpiresAt(),
+        motDePasseTemporaireExpireLe: new Date(), // expiré d'emblée : activation par l'admin
       },
     });
     return tx.medecin.create({

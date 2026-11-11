@@ -23,8 +23,8 @@ export async function ouvrirHandler(req: Request, res: Response) {
 }
 
 export async function completerHandler(req: Request, res: Response) {
-  const input = completerSchema.parse(req.body);
-  res.json(await service.completer(req.params.id as string, input, req.user!.id));
+  completerSchema.parse(req.body ?? {});
+  res.json(await service.completer(req.params.id as string, req.user!.id));
 }
 
 export async function incompleteHandler(req: Request, res: Response) {

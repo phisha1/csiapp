@@ -16,10 +16,19 @@ function serializeAssure<T extends { coordBancaire?: { numeroCompte: string } | 
   return a;
 }
 
+/**
+ * Matricule tiré d'une séquence PostgreSQL. Un matricule saisi à la main peut déjà
+ * occuper un numéro : on avance alors jusqu'au premier numéro libre.
+ * Le numéro n'est jamais tronqué : au-delà de 9 999 assurés il prend 5 chiffres ou plus.
+ */
 async function genMatricule(tx: Prisma.TransactionClient): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await tx.assure.count();
-  return `ASS-${year}-${String(count + 1).padStart(4, '0')}`;
+  for (let essai = 0; essai < 50; essai++) {
+    const [{ n }] = await tx.$queryRaw<{ n: bigint }[]>`SELECT nextval('assure_matricule_seq') AS n`;
+    const matricule = `ASS-${year}-${String(n).padStart(4, '0')}`;
+    if (!(await tx.assure.findUnique({ where: { matricule }, select: { id: true } }))) return matricule;
+  }
+  throw new AppError(500, 'Impossible d’attribuer un matricule libre.');
 }
 
 const detailInclude = {

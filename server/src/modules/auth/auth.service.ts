@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { StatutCompte, type Utilisateur } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
@@ -8,7 +9,24 @@ import { recordAudit } from '../../lib/audit';
 import type { ChangePasswordInput, LoginInput } from './auth.schemas';
 import { isTemporaryPasswordExpired } from '../../lib/temporaryPassword';
 
-const compteBloqueMsg = `Compte bloqué après ${env.MAX_LOGIN_ATTEMPTS} tentatives échouées. Contactez l'administrateur pour le débloquer.`;
+// Réponse unique pour « compte inconnu », « mauvais mot de passe » et « compte verrouillé » :
+// un tiers ne peut ni deviner quels identifiants existent, ni savoir s'il a déclenché un verrou.
+const echecConnexionMsg = `Identifiants incorrects. Après ${env.MAX_LOGIN_ATTEMPTS} échecs, le compte est verrouillé ${env.LOGIN_LOCK_MINUTES} minutes.`;
+
+// Hash factice : on vérifie toujours un mot de passe, même pour un compte inconnu ou
+// verrouillé, afin que le temps de réponse ne trahisse pas l'existence du compte.
+let hashFactice: Promise<string> | null = null;
+function getHashFactice() {
+  hashFactice ??= hashPassword(randomBytes(24).toString('hex'));
+  return hashFactice;
+}
+
+async function trouverCompte(login: string) {
+  const saisi = login.trim();
+  const exact = await prisma.utilisateur.findUnique({ where: { login: saisi } });
+  if (exact || saisi === saisi.toLowerCase()) return exact;
+  return prisma.utilisateur.findUnique({ where: { login: saisi.toLowerCase() } });
+}
 
 function toPublic(u: Utilisateur) {
   return {
@@ -31,36 +49,54 @@ function session(u: Utilisateur) {
   return { token: signToken(authUser), utilisateur: toPublic(u) };
 }
 
-/** Connexion avec verrouillage après MAX_LOGIN_ATTEMPTS échecs (BF1 / BNF1). */
+/**
+ * Connexion avec verrou temporaire après MAX_LOGIN_ATTEMPTS échecs (BF1 / BNF1).
+ * Le verrou se lève seul : un tiers ne peut plus bloquer durablement un compte,
+ * ni celui de l'administrateur.
+ */
 export async function login(input: LoginInput) {
-  const user = await prisma.utilisateur.findUnique({ where: { login: input.login } });
-  if (!user) {
-    throw new AppError(401, 'Identifiants incorrects.');
-  }
-  if (user.statut === StatutCompte.BLOQUE) {
-    throw new AppError(423, compteBloqueMsg);
-  }
-  if (user.statut === StatutCompte.SUSPENDU) {
-    throw new AppError(423, 'Compte suspendu par un administrateur. Contactez-le pour le réactiver.');
+  const user = await trouverCompte(input.login);
+  const maintenant = new Date();
+  const verrouille = !!user?.verrouilleJusquA && user.verrouilleJusquA > maintenant;
+
+  if (!user || verrouille) {
+    // Pendant le verrou, même le bon mot de passe est refusé avec la même réponse :
+    // sinon la différence de message confirmerait un mot de passe deviné.
+    await verifyPassword(input.motDePasse, await getHashFactice());
+    throw new AppError(401, echecConnexionMsg);
   }
 
   const motDePasseOk = await verifyPassword(input.motDePasse, user.motDePasseHash);
   if (!motDePasseOk) {
-    const nbEchecs = user.nbEchecs + 1;
-    const verrouille = nbEchecs >= env.MAX_LOGIN_ATTEMPTS;
-    await prisma.utilisateur.update({
+    // Incrément atomique : des tentatives simultanées ne contournent pas le compteur.
+    const { nbEchecs } = await prisma.utilisateur.update({
       where: { id: user.id },
-      data: { nbEchecs, statut: verrouille ? StatutCompte.BLOQUE : undefined },
+      data: { nbEchecs: { increment: 1 } },
+      select: { nbEchecs: true },
     });
+    const seuilAtteint = nbEchecs >= env.MAX_LOGIN_ATTEMPTS;
+    if (seuilAtteint) {
+      await prisma.utilisateur.update({
+        where: { id: user.id },
+        data: {
+          nbEchecs: 0,
+          verrouilleJusquA: new Date(maintenant.getTime() + env.LOGIN_LOCK_MINUTES * 60_000),
+        },
+      });
+    }
     await recordAudit({
       utilisateurId: user.id,
-      action: verrouille ? 'COMPTE_BLOQUE' : 'CONNEXION_ECHEC',
+      action: seuilAtteint ? 'COMPTE_VERROUILLE' : 'CONNEXION_ECHEC',
     });
-    if (verrouille) throw new AppError(423, compteBloqueMsg);
-    throw new AppError(
-      401,
-      `Identifiants incorrects. Tentative ${nbEchecs}/${env.MAX_LOGIN_ATTEMPTS} — le compte sera bloqué après ${env.MAX_LOGIN_ATTEMPTS} échecs.`,
-    );
+    throw new AppError(401, echecConnexionMsg);
+  }
+
+  // Le statut n'est révélé qu'à celui qui connaît le mot de passe.
+  if (user.statut === StatutCompte.SUSPENDU) {
+    throw new AppError(423, 'Compte suspendu par un administrateur. Contactez-le pour le réactiver.');
+  }
+  if (user.statut !== StatutCompte.ACTIF) {
+    throw new AppError(423, "Compte bloqué. Contactez l'administrateur pour le réactiver.");
   }
 
   if (
@@ -73,7 +109,7 @@ export async function login(input: LoginInput) {
 
   const updated = await prisma.utilisateur.update({
     where: { id: user.id },
-    data: { nbEchecs: 0, derniereConnexion: new Date() },
+    data: { nbEchecs: 0, verrouilleJusquA: null, derniereConnexion: new Date() },
   });
   await recordAudit({ utilisateurId: user.id, action: 'CONNEXION_REUSSIE' });
   return session(updated);

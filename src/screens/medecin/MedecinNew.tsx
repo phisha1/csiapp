@@ -75,10 +75,13 @@ export function MedecinNew() {
           {field('etab', 'Établissement', "Centre Médical d'Etoudi")}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div style={{ marginBottom: 12 }}>
           {field('email', 'Adresse e-mail (accès) *', 'p.atangana@cnam.cm')}
-          {field('mdp', 'Mot de passe provisoire *', '••••••', { type: 'password' })}
         </div>
+        <p style={{ fontSize: 12.5, color: 'var(--csi-text-2)', lineHeight: 1.6, margin: '0 0 20px' }}>
+          Le compte est créé sans mot de passe utilisable. L'administrateur l'active en remettant
+          un mot de passe temporaire au médecin (Comptes → Réinitialiser).
+        </p>
 
         {medTried && errCount > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#fbf0ee', border: '1px solid #eccfca', borderRadius: 9, padding: '10px 13px', marginBottom: 14, fontSize: 12.5, color: '#8b3a2e' }}>

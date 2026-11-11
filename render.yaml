@@ -37,6 +37,16 @@ services:
         value: "7200"
       - key: MAX_LOGIN_ATTEMPTS
         value: "5"
+      - key: LOGIN_LOCK_MINUTES
+        value: "15"
+      # lax : le front et l'API doivent partager le même domaine (voir DEPLOY.md §3).
+      - key: SESSION_COOKIE_SAMESITE
+        value: lax
+      - key: SEPARATION_VALIDATION_PAIEMENT
+        value: "true"
+      # Simulateur bancaire : les virements restent refusés en production.
+      - key: ALLOW_MOCK_BANK
+        value: "false"
       - key: TEMP_PASSWORD_EXPIRES_HOURS
         value: "24"
       - key: SHUTDOWN_TIMEOUT_SECONDS

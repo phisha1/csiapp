@@ -21,4 +21,8 @@ describe('cookie de session', () => {
   it('rend toujours le cookie inaccessible au JavaScript', () => {
     expect(sessionCookieOptions().httpOnly).toBe(true);
   });
+
+  it('n’émet jamais SameSite=None hors production (cookie tiers bloqué par Safari)', () => {
+    expect(sessionCookieOptions().sameSite).toBe('lax');
+  });
 });

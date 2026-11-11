@@ -5,6 +5,8 @@ export interface VirementInput {
   banque: string;
   compte: string;
   titulaire: string;
+  /** Clé d'idempotence : la banque ne doit exécuter qu'une fois un même ordre. */
+  idempotencyKey: string;
 }
 
 export interface VirementResult {

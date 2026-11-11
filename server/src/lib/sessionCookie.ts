@@ -8,7 +8,8 @@ export function sessionCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
     secure: production,
-    sameSite: production ? 'none' : 'lax',
+    // `none` impose `Secure` ; hors production (HTTP local) on retombe sur `lax`.
+    sameSite: production ? env.SESSION_COOKIE_SAMESITE : 'lax',
     path: '/api',
     maxAge: env.SESSION_COOKIE_MAX_AGE_SECONDS * 1000,
   };

@@ -24,6 +24,16 @@ export const environmentSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('2h'),
   SESSION_COOKIE_MAX_AGE_SECONDS: z.coerce.number().int().min(300).max(86400).default(7200),
   MAX_LOGIN_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  // Durée du verrou temporaire posé après MAX_LOGIN_ATTEMPTS échecs (il se lève seul).
+  LOGIN_LOCK_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
+  // `lax` exige que le front et l'API partagent le même domaine (app.x.cm / api.x.cm).
+  // `none` (cookie tiers) est bloqué par Safari et la navigation privée : à éviter.
+  SESSION_COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+  // Séparation des tâches : l'assureur qui valide une feuille ne peut pas la payer.
+  SEPARATION_VALIDATION_PAIEMENT: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  // Le connecteur bancaire est un simulateur : en production, les virements sont
+  // refusés tant que ce drapeau n'est pas posé volontairement (démonstration).
+  ALLOW_MOCK_BANK: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   TEMP_PASSWORD_EXPIRES_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   SHUTDOWN_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(60).default(15),
   RELEASE_SHA: z.string().trim().min(1).default('local'),
